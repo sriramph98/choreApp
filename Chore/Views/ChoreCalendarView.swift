@@ -89,7 +89,7 @@ struct ChoreCalendarView: View {
             
             // Add chore button
             Button {
-                // TODO: Implement add chore functionality
+                showingChoreForm = true
             } label: {
                 Label("Add Chore", systemImage: "plus.circle.fill")
                     .font(.headline)
