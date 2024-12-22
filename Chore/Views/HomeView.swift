@@ -1,17 +1,36 @@
 import SwiftUI
 
 struct HomeView: View {
+    @State private var selectedTab = 0
+    
     var body: some View {
-        NavigationView {
-            VStack {
-                Text("Welcome to Chore Manager!")
-                    .font(.title)
-                    .padding()
-                
-                Text("Start managing your tasks")
-                    .foregroundColor(.gray)
+        TabView(selection: $selectedTab) {
+            NavigationView {
+                ChoreCalendarView()
+                    .navigationTitle("Chore Calendar")
+                    .toolbar {
+                        ToolbarItem(placement: .navigationBarTrailing) {
+                            Button {
+                                // TODO: Add settings or profile menu
+                            } label: {
+                                Image(systemName: "person.circle")
+                                    .foregroundColor(.blue)
+                            }
+                        }
+                    }
             }
-            .navigationTitle("Home")
+            .tabItem {
+                Label("Calendar", systemImage: "calendar")
+            }
+            .tag(0)
+            
+            NavigationView {
+                ChatView()
+            }
+            .tabItem {
+                Label("Chat", systemImage: "message")
+            }
+            .tag(1)
         }
     }
 }
