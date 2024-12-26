@@ -3,7 +3,7 @@ import SwiftUI
 struct ChatView: View {
     @State private var userInput = ""
     @State private var chatHistory: [ChatMessage] = []
-    @StateObject private var choreViewModel = ChoreViewModel()
+    @EnvironmentObject var choreViewModel: ChoreViewModel
     @FocusState private var isFocused: Bool
     @State private var isTyping = false
     
@@ -24,7 +24,7 @@ struct ChatView: View {
                         .padding(.horizontal)
                         .padding(.top, 8)
                     }
-                    .onChange(of: chatHistory.count) { _ in
+                    .onChange(of: chatHistory.count) { oldCount, newCount in
                         withAnimation {
                             proxy.scrollTo(chatHistory.last?.id, anchor: .bottom)
                         }
@@ -45,7 +45,7 @@ struct ChatView: View {
                     Button(action: sendMessage) {
                         Image(systemName: "arrow.up.circle.fill")
                             .font(.system(size: 32))
-                            .foregroundStyle(userInput.isEmpty ? .gray : .blue)
+                            .foregroundStyle(userInput.isEmpty ? Color(.systemGray) : Color(.systemBlue))
                     }
                     .disabled(userInput.isEmpty)
                     .padding(.trailing)
@@ -163,8 +163,8 @@ struct MessageBubble: View {
                 Text(message.content)
                     .padding(.horizontal, 12)
                     .padding(.vertical, 8)
-                    .background(message.isUser ? Color.blue : Color(.systemGray5))
-                    .foregroundColor(message.isUser ? .white : .primary)
+                    .background(message.isUser ? Color(.systemBlue) : Color(.systemGray5))
+                    .foregroundColor(message.isUser ? .white : Color(.label))
                     .clipShape(MessageBubbleShape(isUser: message.isUser))
                 
                 Text(formatTime(message.timestamp))
@@ -244,6 +244,15 @@ struct MessageBubbleShape: Shape {
         return path
     }
 }
+
+#if DEBUG
+struct ChatView_Previews: PreviewProvider {
+    static var previews: some View {
+        ChatView()
+            .environmentObject(ChoreViewModel())
+    }
+}
+#endif
 
 #Preview {
     ChatView()
