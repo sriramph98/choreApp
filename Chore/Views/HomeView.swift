@@ -1,6 +1,7 @@
 import SwiftUI
 
 struct HomeView: View {
+    @EnvironmentObject var choreViewModel: ChoreViewModel
     @State private var selectedTab = 0
     
     var body: some View {
@@ -37,4 +38,5 @@ struct HomeView: View {
 
 #Preview {
     HomeView()
+        .environmentObject(ChoreViewModel())
 } 
