@@ -7,27 +7,17 @@ struct HomeView: View {
     
     var body: some View {
         TabView(selection: $selectedTab) {
-            NavigationView {
-                TasksView()
+            NavigationStack {
+                TasksView(showSettings: $showSettings)
                     .navigationTitle("Tasks")
                     .navigationBarTitleDisplayMode(.large)
-                    .toolbar(content: {
-                        ToolbarItem(placement: .topBarTrailing) {
-                            Button {
-                                showSettings = true
-                            } label: {
-                                Image(systemName: "gear")
-                                    .foregroundStyle(.primary)
-                            }
-                        }
-                    })
             }
             .tabItem {
                 Label("Tasks", systemImage: "checklist")
             }
             .tag(0)
             
-            NavigationView {
+            NavigationStack {
                 ChoreCalendarView()
                     .navigationTitle("Schedule")
                     .navigationBarTitleDisplayMode(.large)
@@ -37,7 +27,7 @@ struct HomeView: View {
             }
             .tag(1)
             
-            NavigationView {
+            NavigationStack {
                 VStack(spacing: 16) {
                     Spacer()
                     
@@ -80,11 +70,11 @@ struct SettingsView: View {
     @AppStorage("hasCompletedOnboarding") private var hasCompletedOnboarding = false
     
     var body: some View {
-        NavigationView {
+        NavigationStack {
             List {
                 Section(header: Text("People")) {
                     NavigationLink {
-                        PeopleManagementView()
+                        SettingsPeopleView()
                     } label: {
                         Label("Manage People", systemImage: "person.2")
                     }
@@ -111,14 +101,19 @@ struct SettingsView: View {
                 }
             }
             .navigationTitle("Settings")
-            .navigationBarItems(trailing: Button("Done") {
-                isPresented = false
-            })
+            .toolbar {
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Done") {
+                        isPresented = false
+                    }
+                }
+            }
         }
     }
 }
 
-struct PeopleManagementView: View {
+// Renamed to avoid conflict with the one in TasksView.swift
+struct SettingsPeopleView: View {
     @EnvironmentObject var choreViewModel: ChoreViewModel
     @State private var showAddPersonSheet = false
     
@@ -141,7 +136,7 @@ struct PeopleManagementView: View {
         }
         .navigationTitle("Manage People")
         .sheet(isPresented: $showAddPersonSheet) {
-            AddPersonSheetView(isPresented: $showAddPersonSheet)
+            AddPersonView(isPresented: $showAddPersonSheet)
         }
         .toolbar {
             ToolbarItem(placement: .navigationBarTrailing) {

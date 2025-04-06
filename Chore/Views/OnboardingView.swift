@@ -312,7 +312,7 @@ struct AddPersonSheetView: View {
     let colors = ["blue", "green", "red", "purple", "orange", "pink"]
     
     var body: some View {
-        NavigationView {
+        NavigationStack {
             VStack {
                 // Avatar placeholder (in a real app, would allow image selection)
                 ZStack {
@@ -372,9 +372,13 @@ struct AddPersonSheetView: View {
                 Spacer()
             }
             .navigationTitle("Add Person")
-            .navigationBarItems(trailing: Button("Cancel") {
-                isPresented = false
-            })
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") {
+                        isPresented = false
+                    }
+                }
+            }
         }
     }
 }
@@ -385,15 +389,26 @@ struct AddChoreSheetView: View {
     @State private var choreName = ""
     @State private var selectedUserId: UUID?
     @State private var dueDate = Date()
+    @State private var repeatOption = ChoreViewModel.RepeatOption.never
     let onAddChore: (String) -> Void
+    var title: String = "Add Custom Chore"
+    var buttonText: String = "Add Chore"
     
     var body: some View {
-        NavigationView {
+        NavigationStack {
             Form {
                 Section(header: Text("Chore Details")) {
                     TextField("Chore Name", text: $choreName)
                     
                     DatePicker("Due Date", selection: $dueDate, displayedComponents: [.date])
+                    
+                    Picker("Repeat", selection: $repeatOption) {
+                        Text("Never").tag(ChoreViewModel.RepeatOption.never)
+                        Text("Every Day").tag(ChoreViewModel.RepeatOption.daily)
+                        Text("Every Week").tag(ChoreViewModel.RepeatOption.weekly)
+                        Text("Every Month").tag(ChoreViewModel.RepeatOption.monthly)
+                        Text("Every Year").tag(ChoreViewModel.RepeatOption.yearly)
+                    }
                 }
                 
                 Section(header: Text("Assign To")) {
@@ -413,9 +428,17 @@ struct AddChoreSheetView: View {
                         }
                     }
                 }
+            }
+            .navigationTitle(title)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") {
+                        isPresented = false
+                    }
+                }
                 
-                Section {
-                    Button("Add Chore") {
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Add") {
                         if !choreName.isEmpty {
                             // Call the provided callback with the chore name
                             onAddChore(choreName)
@@ -424,7 +447,8 @@ struct AddChoreSheetView: View {
                             choreViewModel.addTask(
                                 name: choreName,
                                 dueDate: dueDate,
-                                assignedTo: selectedUserId
+                                assignedTo: selectedUserId,
+                                repeatOption: repeatOption
                             )
                             
                             isPresented = false
@@ -433,10 +457,6 @@ struct AddChoreSheetView: View {
                     .disabled(choreName.isEmpty)
                 }
             }
-            .navigationTitle("Add Custom Chore")
-            .navigationBarItems(trailing: Button("Cancel") {
-                isPresented = false
-            })
         }
     }
 }
