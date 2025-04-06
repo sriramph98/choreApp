@@ -68,6 +68,8 @@ struct SettingsView: View {
     @EnvironmentObject var choreViewModel: ChoreViewModel
     @Binding var isPresented: Bool
     @AppStorage("hasCompletedOnboarding") private var hasCompletedOnboarding = false
+    @AppStorage("hasCompletedLogin") private var hasCompletedLogin = false
+    @State private var showingLogoutAlert = false
     
     var body: some View {
         NavigationStack {
@@ -91,6 +93,15 @@ struct SettingsView: View {
                     }
                 }
                 
+                Section(header: Text("Account")) {
+                    Button {
+                        showingLogoutAlert = true
+                    } label: {
+                        Label("Log Out", systemImage: "rectangle.portrait.and.arrow.forward")
+                            .foregroundColor(.red)
+                    }
+                }
+                
                 Section(header: Text("About")) {
                     HStack {
                         Text("Version")
@@ -107,6 +118,16 @@ struct SettingsView: View {
                         isPresented = false
                     }
                 }
+            }
+            .alert("Log Out", isPresented: $showingLogoutAlert) {
+                Button("Cancel", role: .cancel) { }
+                Button("Log Out", role: .destructive) {
+                    // Log out the user
+                    hasCompletedLogin = false
+                    isPresented = false
+                }
+            } message: {
+                Text("Are you sure you want to log out?")
             }
         }
     }

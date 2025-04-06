@@ -11,19 +11,22 @@ import SwiftUI
 struct ChoreApp: App {
     @StateObject private var choreViewModel = ChoreViewModel()
     @AppStorage("hasCompletedOnboarding") private var hasCompletedOnboarding = false
+    @AppStorage("hasCompletedLogin") private var hasCompletedLogin = false
     
     var body: some Scene {
         WindowGroup {
-            if hasCompletedOnboarding {
-                ContentView()
+            if !hasCompletedLogin {
+                // Show login first
+                LoginView()
                     .environmentObject(choreViewModel)
-            } else {
+            } else if !hasCompletedOnboarding {
+                // Show onboarding after login if not completed
                 OnboardingView()
                     .environmentObject(choreViewModel)
-                    .onDisappear {
-                        // This ensures the onboarding is only shown once
-                        hasCompletedOnboarding = true
-                    }
+            } else {
+                // Show main content if both login and onboarding are completed
+                ContentView()
+                    .environmentObject(choreViewModel)
             }
         }
     }
