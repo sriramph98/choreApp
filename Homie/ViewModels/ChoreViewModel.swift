@@ -1,9 +1,11 @@
 import Foundation
 
+@MainActor
 class ChoreViewModel: ObservableObject {
     @Published var tasks: [ChoreTask] = []
     @Published var users: [User] = []
     @Published var customChores: [String] = []
+    private let supabaseManager = SupabaseManager.shared
     
     enum RepeatOption: String, Codable {
         case never
@@ -13,8 +15,8 @@ class ChoreViewModel: ObservableObject {
         case yearly
     }
     
-    struct ChoreTask: Identifiable {
-        let id = UUID()
+    struct ChoreTask: Identifiable, Codable {
+        var id: UUID
         var name: String
         var dueDate: Date
         var isCompleted: Bool
@@ -22,6 +24,17 @@ class ChoreViewModel: ObservableObject {
         var notes: String?
         var repeatOption: RepeatOption = .never
         var parentTaskId: UUID? // Reference to the original task for repeating tasks
+        
+        init(id: UUID = UUID(), name: String, dueDate: Date, isCompleted: Bool, assignedTo: UUID?, notes: String? = nil, repeatOption: RepeatOption = .never, parentTaskId: UUID? = nil) {
+            self.id = id
+            self.name = name
+            self.dueDate = dueDate
+            self.isCompleted = isCompleted
+            self.assignedTo = assignedTo
+            self.notes = notes
+            self.repeatOption = repeatOption
+            self.parentTaskId = parentTaskId
+        }
     }
     
     // Sample data - replace with actual data source later
@@ -35,6 +48,13 @@ class ChoreViewModel: ObservableObject {
             ChoreTask(name: "Laundry", dueDate: Date().addingTimeInterval(86400), isCompleted: false, assignedTo: users[2].id, repeatOption: .weekly),
             ChoreTask(name: "Vacuum", dueDate: Date().addingTimeInterval(172800), isCompleted: false, assignedTo: users[0].id)
         ]
+        
+        // Try to fetch tasks from Supabase if we're authenticated
+        if supabaseManager.isAuthenticated {
+            Task {
+                await syncTasksFromSupabase()
+            }
+        }
     }
     
     // Task management functions
@@ -46,6 +66,13 @@ class ChoreViewModel: ObservableObject {
         if repeatOption != .never {
             // Generate 10 occurrences to ensure we have enough for the visible future
             generateFutureOccurrences(for: newTask, count: 10)
+        }
+        
+        // Sync new task to Supabase if authenticated
+        if supabaseManager.isAuthenticated {
+            Task {
+                await saveTaskToSupabase(newTask)
+            }
         }
     }
     
@@ -167,6 +194,13 @@ class ChoreViewModel: ObservableObject {
                                 )
                                 tasks.append(newOccurrence)
                                 lastDate = nextDate
+                                
+                                // Sync new occurrence to Supabase if authenticated
+                                if supabaseManager.isAuthenticated {
+                                    Task {
+                                        await saveTaskToSupabase(newOccurrence)
+                                    }
+                                }
                             }
                         }
                     }
@@ -215,6 +249,13 @@ class ChoreViewModel: ObservableObject {
             }
             
             tasks[index] = task
+            
+            // Sync updated task to Supabase if authenticated
+            if supabaseManager.isAuthenticated {
+                Task {
+                    await saveTaskToSupabase(task)
+                }
+            }
         }
     }
     
@@ -284,11 +325,28 @@ class ChoreViewModel: ObservableObject {
             // If this is a parent repeating task, also delete all its instances
             if task.repeatOption != .never && task.parentTaskId == nil {
                 // Remove all child instances
+                let childTasks = tasks.filter { $0.parentTaskId == id }
                 tasks.removeAll { $0.parentTaskId == id }
+                
+                // Delete child tasks from Supabase
+                if supabaseManager.isAuthenticated {
+                    for childTask in childTasks {
+                        Task {
+                            await deleteTaskFromSupabase(childTask.id)
+                        }
+                    }
+                }
             }
             
             // Remove the task itself
             tasks.removeAll { $0.id == id }
+            
+            // Delete from Supabase
+            if supabaseManager.isAuthenticated {
+                Task {
+                    await deleteTaskFromSupabase(id)
+                }
+            }
         }
     }
     
@@ -311,6 +369,13 @@ class ChoreViewModel: ObservableObject {
     func addUser(name: String, color: String) {
         let newUser = User(name: name, avatarSystemName: "person.circle.fill", color: color)
         users.append(newUser)
+        
+        // Save to Supabase if authenticated
+        if supabaseManager.isAuthenticated {
+            Task {
+                _ = await supabaseManager.saveUserProfile(newUser)
+            }
+        }
     }
     
     func getUser(by id: UUID) -> User? {
@@ -415,6 +480,43 @@ class ChoreViewModel: ObservableObject {
         // Add all new tasks at once after the loop to avoid publishing during view updates
         if !newTasks.isEmpty {
             tasks.append(contentsOf: newTasks)
+        }
+    }
+    
+    // Supabase sync functions
+    func syncTasksFromSupabase() async {
+        if let supaTasks = await supabaseManager.fetchTasks() {
+            DispatchQueue.main.async {
+                // Only replace tasks from the database, keeping any local ones
+                // that haven't been synced yet
+                let existingIds = Set(supaTasks.map { $0.id })
+                let localOnlyTasks = self.tasks.filter { !existingIds.contains($0.id) }
+                
+                // Merge the lists
+                self.tasks = supaTasks + localOnlyTasks
+            }
+        }
+    }
+    
+    private func saveTaskToSupabase(_ task: ChoreTask) async {
+        _ = await supabaseManager.saveTask(task)
+    }
+    
+    private func deleteTaskFromSupabase(_ taskId: UUID) async {
+        _ = await supabaseManager.deleteTask(id: taskId)
+    }
+    
+    // User management with Supabase
+    func syncUsersFromSupabase() async {
+        if let supaUsers = await supabaseManager.fetchUsers() {
+            DispatchQueue.main.async {
+                // Add any new users from Supabase
+                for user in supaUsers {
+                    if !self.users.contains(where: { $0.id == user.id }) {
+                        self.users.append(user)
+                    }
+                }
+            }
         }
     }
 } 

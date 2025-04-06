@@ -9,7 +9,7 @@ struct HomeView: View {
         TabView(selection: $selectedTab) {
             NavigationStack {
                 TasksView(showSettings: $showSettings)
-                    .navigationTitle("Tasks")
+                    .navigationTitle("Homie Tasks")
                     .navigationBarTitleDisplayMode(.large)
             }
             .tabItem {
@@ -19,7 +19,7 @@ struct HomeView: View {
             
             NavigationStack {
                 ChoreCalendarView()
-                    .navigationTitle("Schedule")
+                    .navigationTitle("Homie Schedule")
                     .navigationBarTitleDisplayMode(.large)
             }
             .tabItem {
@@ -48,7 +48,7 @@ struct HomeView: View {
                     
                     Spacer()
                 }
-                .navigationTitle("Chat")
+                .navigationTitle("Homie Chat")
                 .navigationBarTitleDisplayMode(.large)
             }
             .tabItem {
@@ -111,7 +111,7 @@ struct SettingsView: View {
                     }
                 }
             }
-            .navigationTitle("Settings")
+            .navigationTitle("Homie Settings")
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Done") {

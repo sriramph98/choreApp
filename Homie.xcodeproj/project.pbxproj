@@ -6,6 +6,10 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		80141D172DA2948200827206 /* Supabase in Frameworks */ = {isa = PBXBuildFile; productRef = 80141D162DA2948200827206 /* Supabase */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXContainerItemProxy section */
 		80AE96EF2D1856E5003B9BFD /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
@@ -24,25 +28,25 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
-		80AE96DE2D1856E3003B9BFD /* Chore.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Chore.app; sourceTree = BUILT_PRODUCTS_DIR; };
-		80AE96EE2D1856E5003B9BFD /* ChoreTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = ChoreTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
-		80AE96F82D1856E5003B9BFD /* ChoreUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = ChoreUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		80AE96DE2D1856E3003B9BFD /* Homie.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Homie.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		80AE96EE2D1856E5003B9BFD /* HomieTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = HomieTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		80AE96F82D1856E5003B9BFD /* HomieUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = HomieUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
-		80AE96E02D1856E3003B9BFD /* Chore */ = {
+		80AE96E02D1856E3003B9BFD /* Homie */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
-			path = Chore;
+			path = Homie;
 			sourceTree = "<group>";
 		};
-		80AE96F12D1856E5003B9BFD /* ChoreTests */ = {
+		80AE96F12D1856E5003B9BFD /* HomieTests */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
-			path = ChoreTests;
+			path = HomieTests;
 			sourceTree = "<group>";
 		};
-		80AE96FB2D1856E5003B9BFD /* ChoreUITests */ = {
+		80AE96FB2D1856E5003B9BFD /* HomieUITests */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
-			path = ChoreUITests;
+			path = HomieUITests;
 			sourceTree = "<group>";
 		};
 /* End PBXFileSystemSynchronizedRootGroup section */
@@ -52,6 +56,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				80141D172DA2948200827206 /* Supabase in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -72,12 +77,20 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		80141D152DA2948200827206 /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			name = Frameworks;
+			sourceTree = "<group>";
+		};
 		80AE96D52D1856E3003B9BFD = {
 			isa = PBXGroup;
 			children = (
-				80AE96E02D1856E3003B9BFD /* Chore */,
-				80AE96F12D1856E5003B9BFD /* ChoreTests */,
-				80AE96FB2D1856E5003B9BFD /* ChoreUITests */,
+				80AE96E02D1856E3003B9BFD /* Homie */,
+				80AE96F12D1856E5003B9BFD /* HomieTests */,
+				80AE96FB2D1856E5003B9BFD /* HomieUITests */,
+				80141D152DA2948200827206 /* Frameworks */,
 				80AE96DF2D1856E3003B9BFD /* Products */,
 			);
 			sourceTree = "<group>";
@@ -85,9 +98,9 @@
 		80AE96DF2D1856E3003B9BFD /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				80AE96DE2D1856E3003B9BFD /* Chore.app */,
-				80AE96EE2D1856E5003B9BFD /* ChoreTests.xctest */,
-				80AE96F82D1856E5003B9BFD /* ChoreUITests.xctest */,
+				80AE96DE2D1856E3003B9BFD /* Homie.app */,
+				80AE96EE2D1856E5003B9BFD /* HomieTests.xctest */,
+				80AE96F82D1856E5003B9BFD /* HomieUITests.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -95,9 +108,9 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
-		80AE96DD2D1856E3003B9BFD /* Chore */ = {
+		80AE96DD2D1856E3003B9BFD /* Homie */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = 80AE97022D1856E5003B9BFD /* Build configuration list for PBXNativeTarget "Chore" */;
+			buildConfigurationList = 80AE97022D1856E5003B9BFD /* Build configuration list for PBXNativeTarget "Homie" */;
 			buildPhases = (
 				80AE96DA2D1856E3003B9BFD /* Sources */,
 				80AE96DB2D1856E3003B9BFD /* Frameworks */,
@@ -108,18 +121,19 @@
 			dependencies = (
 			);
 			fileSystemSynchronizedGroups = (
-				80AE96E02D1856E3003B9BFD /* Chore */,
+				80AE96E02D1856E3003B9BFD /* Homie */,
 			);
-			name = Chore;
+			name = Homie;
 			packageProductDependencies = (
+				80141D162DA2948200827206 /* Supabase */,
 			);
 			productName = Chore;
-			productReference = 80AE96DE2D1856E3003B9BFD /* Chore.app */;
+			productReference = 80AE96DE2D1856E3003B9BFD /* Homie.app */;
 			productType = "com.apple.product-type.application";
 		};
-		80AE96ED2D1856E5003B9BFD /* ChoreTests */ = {
+		80AE96ED2D1856E5003B9BFD /* HomieTests */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = 80AE97052D1856E5003B9BFD /* Build configuration list for PBXNativeTarget "ChoreTests" */;
+			buildConfigurationList = 80AE97052D1856E5003B9BFD /* Build configuration list for PBXNativeTarget "HomieTests" */;
 			buildPhases = (
 				80AE96EA2D1856E5003B9BFD /* Sources */,
 				80AE96EB2D1856E5003B9BFD /* Frameworks */,
@@ -131,18 +145,18 @@
 				80AE96F02D1856E5003B9BFD /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
-				80AE96F12D1856E5003B9BFD /* ChoreTests */,
+				80AE96F12D1856E5003B9BFD /* HomieTests */,
 			);
-			name = ChoreTests;
+			name = HomieTests;
 			packageProductDependencies = (
 			);
 			productName = ChoreTests;
-			productReference = 80AE96EE2D1856E5003B9BFD /* ChoreTests.xctest */;
+			productReference = 80AE96EE2D1856E5003B9BFD /* HomieTests.xctest */;
 			productType = "com.apple.product-type.bundle.unit-test";
 		};
-		80AE96F72D1856E5003B9BFD /* ChoreUITests */ = {
+		80AE96F72D1856E5003B9BFD /* HomieUITests */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = 80AE97082D1856E5003B9BFD /* Build configuration list for PBXNativeTarget "ChoreUITests" */;
+			buildConfigurationList = 80AE97082D1856E5003B9BFD /* Build configuration list for PBXNativeTarget "HomieUITests" */;
 			buildPhases = (
 				80AE96F42D1856E5003B9BFD /* Sources */,
 				80AE96F52D1856E5003B9BFD /* Frameworks */,
@@ -154,13 +168,13 @@
 				80AE96FA2D1856E5003B9BFD /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
-				80AE96FB2D1856E5003B9BFD /* ChoreUITests */,
+				80AE96FB2D1856E5003B9BFD /* HomieUITests */,
 			);
-			name = ChoreUITests;
+			name = HomieUITests;
 			packageProductDependencies = (
 			);
 			productName = ChoreUITests;
-			productReference = 80AE96F82D1856E5003B9BFD /* ChoreUITests.xctest */;
+			productReference = 80AE96F82D1856E5003B9BFD /* HomieUITests.xctest */;
 			productType = "com.apple.product-type.bundle.ui-testing";
 		};
 /* End PBXNativeTarget section */
@@ -186,7 +200,7 @@
 					};
 				};
 			};
-			buildConfigurationList = 80AE96D92D1856E3003B9BFD /* Build configuration list for PBXProject "Chore" */;
+			buildConfigurationList = 80AE96D92D1856E3003B9BFD /* Build configuration list for PBXProject "Homie" */;
 			developmentRegion = en;
 			hasScannedForEncodings = 0;
 			knownRegions = (
@@ -196,15 +210,16 @@
 			mainGroup = 80AE96D52D1856E3003B9BFD;
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
+				8087D5192DA2907C005FD560 /* XCRemoteSwiftPackageReference "supabase-swift" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 80AE96DF2D1856E3003B9BFD /* Products */;
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
-				80AE96DD2D1856E3003B9BFD /* Chore */,
-				80AE96ED2D1856E5003B9BFD /* ChoreTests */,
-				80AE96F72D1856E5003B9BFD /* ChoreUITests */,
+				80AE96DD2D1856E3003B9BFD /* Homie */,
+				80AE96ED2D1856E5003B9BFD /* HomieTests */,
+				80AE96F72D1856E5003B9BFD /* HomieUITests */,
 			);
 		};
 /* End PBXProject section */
@@ -260,12 +275,12 @@
 /* Begin PBXTargetDependency section */
 		80AE96F02D1856E5003B9BFD /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
-			target = 80AE96DD2D1856E3003B9BFD /* Chore */;
+			target = 80AE96DD2D1856E3003B9BFD /* Homie */;
 			targetProxy = 80AE96EF2D1856E5003B9BFD /* PBXContainerItemProxy */;
 		};
 		80AE96FA2D1856E5003B9BFD /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
-			target = 80AE96DD2D1856E3003B9BFD /* Chore */;
+			target = 80AE96DD2D1856E3003B9BFD /* Homie */;
 			targetProxy = 80AE96F92D1856E5003B9BFD /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
@@ -399,9 +414,10 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = YES;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_ASSET_PATHS = "\"Chore/Preview Content\"";
+				DEVELOPMENT_ASSET_PATHS = "\"Homie/Preview Content\"";
 				DEVELOPMENT_TEAM = 34587JNE8E;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
@@ -417,7 +433,7 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = sriramph.Chore;
+				PRODUCT_BUNDLE_IDENTIFIER = sriramph.Homie;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
@@ -430,9 +446,10 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = YES;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_ASSET_PATHS = "\"Chore/Preview Content\"";
+				DEVELOPMENT_ASSET_PATHS = "\"Homie/Preview Content\"";
 				DEVELOPMENT_TEAM = 34587JNE8E;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
@@ -448,7 +465,7 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = sriramph.Chore;
+				PRODUCT_BUNDLE_IDENTIFIER = sriramph.Homie;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
@@ -470,7 +487,7 @@
 				SWIFT_EMIT_LOC_STRINGS = NO;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
-				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Chore.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Chore";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Homie.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Homie";
 			};
 			name = Debug;
 		};
@@ -488,7 +505,7 @@
 				SWIFT_EMIT_LOC_STRINGS = NO;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
-				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Chore.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Chore";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Homie.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Homie";
 			};
 			name = Release;
 		};
@@ -527,7 +544,7 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
-		80AE96D92D1856E3003B9BFD /* Build configuration list for PBXProject "Chore" */ = {
+		80AE96D92D1856E3003B9BFD /* Build configuration list for PBXProject "Homie" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				80AE97002D1856E5003B9BFD /* Debug */,
@@ -536,7 +553,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		80AE97022D1856E5003B9BFD /* Build configuration list for PBXNativeTarget "Chore" */ = {
+		80AE97022D1856E5003B9BFD /* Build configuration list for PBXNativeTarget "Homie" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				80AE97032D1856E5003B9BFD /* Debug */,
@@ -545,7 +562,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		80AE97052D1856E5003B9BFD /* Build configuration list for PBXNativeTarget "ChoreTests" */ = {
+		80AE97052D1856E5003B9BFD /* Build configuration list for PBXNativeTarget "HomieTests" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				80AE97062D1856E5003B9BFD /* Debug */,
@@ -554,7 +571,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		80AE97082D1856E5003B9BFD /* Build configuration list for PBXNativeTarget "ChoreUITests" */ = {
+		80AE97082D1856E5003B9BFD /* Build configuration list for PBXNativeTarget "HomieUITests" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				80AE97092D1856E5003B9BFD /* Debug */,
@@ -564,6 +581,25 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		8087D5192DA2907C005FD560 /* XCRemoteSwiftPackageReference "supabase-swift" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/supabase/supabase-swift.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 2.5.1;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		80141D162DA2948200827206 /* Supabase */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 8087D5192DA2907C005FD560 /* XCRemoteSwiftPackageReference "supabase-swift" */;
+			productName = Supabase;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = 80AE96D62D1856E3003B9BFD /* Project object */;
 }

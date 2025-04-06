@@ -4,13 +4,13 @@ struct LoginView: View {
     @EnvironmentObject var choreViewModel: ChoreViewModel
     @AppStorage("hasCompletedLogin") private var hasCompletedLogin = false
     @AppStorage("hasCompletedOnboarding") private var hasCompletedOnboarding = false
+    @StateObject private var supabaseManager = SupabaseManager.shared
     
     @State private var email = ""
     @State private var password = ""
     @State private var isSecured = true
     @State private var showingErrorAlert = false
     @State private var errorMessage = ""
-    @State private var isLoggingIn = false
     
     private var biometricType = BiometricAuthHelper.getBiometricType()
     
@@ -19,14 +19,14 @@ struct LoginView: View {
             VStack(spacing: 30) {
                 // App title and icon
                 VStack(spacing: 16) {
-                    Image("AppIcon")
+                    Image(systemName: "checkmark.circle.fill")
                         .resizable()
                         .aspectRatio(contentMode: .fit)
                         .frame(width: 100, height: 100)
-                        .cornerRadius(20)
+                        .foregroundColor(.blue)
                         .padding(.top, 20)
                     
-                    Text("Chore")
+                    Text("Homie")
                         .font(.system(size: 32, weight: .bold))
                 }
                 .padding(.top, 30)
@@ -105,10 +105,12 @@ struct LoginView: View {
                 // Login buttons
                 VStack(spacing: 16) {
                     Button {
-                        login()
+                        Task {
+                            await loginWithSupabase()
+                        }
                     } label: {
                         Group {
-                            if isLoggingIn {
+                            if supabaseManager.isLoading {
                                 ProgressView()
                                     .progressViewStyle(CircularProgressViewStyle(tint: .white))
                             } else {
@@ -122,23 +124,43 @@ struct LoginView: View {
                         .foregroundColor(.white)
                         .cornerRadius(12)
                     }
-                    .disabled(email.isEmpty || password.isEmpty || isLoggingIn)
-                    .opacity((email.isEmpty || password.isEmpty || isLoggingIn) ? 0.6 : 1)
+                    .disabled(email.isEmpty || password.isEmpty || supabaseManager.isLoading)
+                    .opacity((email.isEmpty || password.isEmpty || supabaseManager.isLoading) ? 0.6 : 1)
                     
-                    // Biometric authentication
-                    if biometricType != .none {
+                    // Social login options
+                    VStack(spacing: 12) {
                         Button {
-                            authenticateWithBiometrics()
+                            Task {
+                                await signInWithGoogle()
+                            }
                         } label: {
                             HStack {
-                                Image(systemName: biometricType.iconName)
-                                Text("Sign in with \(biometricType.title)")
+                                Image(systemName: "g.circle.fill")
+                                    .font(.title3)
+                                Text("Continue with Google")
                             }
                             .frame(maxWidth: .infinity)
                             .padding()
                             .background(Color(.systemGray6))
                             .foregroundColor(.primary)
                             .cornerRadius(12)
+                        }
+                        
+                        // Biometric authentication
+                        if biometricType != .none {
+                            Button {
+                                authenticateWithBiometrics()
+                            } label: {
+                                HStack {
+                                    Image(systemName: biometricType.iconName)
+                                    Text("Sign in with \(biometricType.title)")
+                                }
+                                .frame(maxWidth: .infinity)
+                                .padding()
+                                .background(Color(.systemGray6))
+                                .foregroundColor(.primary)
+                                .cornerRadius(12)
+                            }
                         }
                     }
                     
@@ -159,6 +181,7 @@ struct LoginView: View {
                         
                         Button {
                             // Show sign up page
+                            showSignUp()
                         } label: {
                             Text("Sign Up")
                                 .fontWeight(.semibold)
@@ -180,30 +203,81 @@ struct LoginView: View {
                 dismissButton: .default(Text("OK"))
             )
         }
+        .onChange(of: supabaseManager.isAuthenticated) { newValue in
+            if newValue {
+                hasCompletedLogin = true
+                
+                // Also fetch and sync user data from Supabase
+                Task {
+                    if let supabaseUsers = await supabaseManager.fetchUsers() {
+                        // Update local user data
+                        DispatchQueue.main.async {
+                            for user in supabaseUsers {
+                                if !choreViewModel.users.contains(where: { $0.id == user.id }) {
+                                    choreViewModel.users.append(user)
+                                }
+                            }
+                        }
+                    }
+                    
+                    if let supaTasks = await supabaseManager.fetchTasks() {
+                        // Update local tasks
+                        DispatchQueue.main.async {
+                            choreViewModel.tasks = supaTasks
+                        }
+                    }
+                }
+            }
+        }
+        .onReceive(supabaseManager.$authError) { error in
+            if let error = error {
+                errorMessage = error.localizedDescription
+                showingErrorAlert = true
+            }
+        }
     }
     
-    private func login() {
-        guard !email.isEmpty && !password.isEmpty else {
-            return
+    private func loginWithSupabase() async {
+        if !email.isEmpty && !password.isEmpty {
+            let success = await supabaseManager.signIn(email: email, password: password)
+            if !success && supabaseManager.authError == nil {
+                errorMessage = "Invalid email or password"
+                showingErrorAlert = true
+            }
         }
-        
-        isLoggingIn = true
-        
-        // Simulate network delay
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
-            // For demonstration purposes, we'll just accept any email/password
-            // In a real app, you would validate credentials against a backend
-            hasCompletedLogin = true
-            isLoggingIn = false
+    }
+    
+    private func signInWithGoogle() async {
+        let success = await supabaseManager.signInWithProvider(provider: .google)
+        if !success && supabaseManager.authError == nil {
+            errorMessage = "Unable to sign in with Google"
+            showingErrorAlert = true
         }
     }
     
     private func authenticateWithBiometrics() {
         BiometricAuthHelper.authenticate { success, error in
             if success {
+                // If successful, try to use stored credentials or token
                 hasCompletedLogin = true
             } else if let error = error {
                 errorMessage = error
+                showingErrorAlert = true
+            }
+        }
+    }
+    
+    private func showSignUp() {
+        // Ideally navigate to sign up screen
+        Task {
+            if !email.isEmpty && !password.isEmpty {
+                let success = await supabaseManager.signUp(email: email, password: password)
+                if success {
+                    // Successfully created account and logged in
+                    hasCompletedLogin = true
+                }
+            } else {
+                errorMessage = "Please enter an email and password to sign up"
                 showingErrorAlert = true
             }
         }

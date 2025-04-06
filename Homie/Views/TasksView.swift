@@ -61,7 +61,7 @@ struct TasksView: View {
             AddChoreSheetView(isPresented: $showingAddTaskSheet, onAddChore: { choreName in
                 // Just need to call the callback to satisfy the function signature
                 // The actual task was added in the view's implementation
-            }, title: "Add Task", buttonText: "Add Task")
+            }, title: "Add Homie Task", buttonText: "Add Task")
         }
         .sheet(isPresented: $showingTaskDetailSheet, onDismiss: {
             // Reset selectedTask when the sheet is dismissed

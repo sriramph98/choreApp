@@ -371,7 +371,7 @@ struct AddPersonSheetView: View {
                 
                 Spacer()
             }
-            .navigationTitle("Add Person")
+            .navigationTitle("Welcome to Homie")
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") {
@@ -429,7 +429,7 @@ struct AddChoreSheetView: View {
                     }
                 }
             }
-            .navigationTitle(title)
+            .navigationTitle("Welcome to Homie")
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") {

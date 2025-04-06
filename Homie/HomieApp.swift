@@ -8,10 +8,10 @@
 import SwiftUI
 
 @main
-struct ChoreApp: App {
-    @StateObject private var choreViewModel = ChoreViewModel()
-    @AppStorage("hasCompletedOnboarding") private var hasCompletedOnboarding = false
+struct HomieApp: App {
+    @StateObject var choreViewModel = ChoreViewModel()
     @AppStorage("hasCompletedLogin") private var hasCompletedLogin = false
+    @AppStorage("hasCompletedOnboarding") private var hasCompletedOnboarding = false
     
     var body: some Scene {
         WindowGroup {
@@ -25,7 +25,7 @@ struct ChoreApp: App {
                     .environmentObject(choreViewModel)
             } else {
                 // Show main content if both login and onboarding are completed
-                ContentView()
+                HomeView()
                     .environmentObject(choreViewModel)
             }
         }
