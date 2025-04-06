@@ -10,11 +10,21 @@ import SwiftUI
 @main
 struct ChoreApp: App {
     @StateObject private var choreViewModel = ChoreViewModel()
+    @AppStorage("hasCompletedOnboarding") private var hasCompletedOnboarding = false
     
     var body: some Scene {
         WindowGroup {
-            ContentView()
-                .environmentObject(choreViewModel)
+            if hasCompletedOnboarding {
+                ContentView()
+                    .environmentObject(choreViewModel)
+            } else {
+                OnboardingView()
+                    .environmentObject(choreViewModel)
+                    .onDisappear {
+                        // This ensures the onboarding is only shown once
+                        hasCompletedOnboarding = true
+                    }
+            }
         }
     }
 }

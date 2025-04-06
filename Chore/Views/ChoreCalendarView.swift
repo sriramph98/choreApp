@@ -1,191 +1,153 @@
 import SwiftUI
 
 struct ChoreCalendarView: View {
-    @State private var selectedDay: Chore.WeekDay = .monday
-    @State private var chores: [Chore] = [
-        // Update sample chores with assigned users
-        Chore(title: "Clean Kitchen", day: .monday, isCompleted: false, assignedTo: User.sampleUsers[0]),
-        Chore(title: "Vacuum Living Room", day: .monday, isCompleted: true, assignedTo: User.sampleUsers[1]),
-        Chore(title: "Do Laundry", day: .wednesday, isCompleted: false, assignedTo: User.sampleUsers[2]),
-        Chore(title: "Water Plants", day: .friday, isCompleted: false, assignedTo: User.sampleUsers[0])
-    ]
-    @State private var users: [User] = User.sampleUsers
-    @State private var showingUserManagement = false
-    @State private var showingChoreForm = false
-    @State private var choreToEdit: Chore?
+    @EnvironmentObject var choreViewModel: ChoreViewModel
+    @State private var selectedDate = Date()
+    @State private var weekStart: Date = Date()
+    
+    let weekdays = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
+    private let monthFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "MMMM yyyy"
+        return formatter
+    }()
     
     var body: some View {
-        VStack(spacing: 20) {
-            // Week day selector
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 12) {
-                    ForEach(Chore.WeekDay.allCases, id: \.self) { day in
-                        DayButton(day: day, isSelected: selectedDay == day) {
-                            selectedDay = day
+        VStack(spacing: 0) {
+            // Compact weekly calendar
+            VStack {
+                HStack {
+                    Button(action: {
+                        if let newDate = Calendar.current.date(byAdding: .weekOfYear, value: -1, to: weekStart) {
+                            weekStart = newDate
                         }
-                    }
-                }
-                .padding(.horizontal)
-            }
-            
-            // Users ScrollView
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 12) {
-                    ForEach(users) { user in
-                        UserAvatar(user: user)
-                    }
-                    
-                    Button {
-                        showingUserManagement = true
-                    } label: {
-                        Image(systemName: "plus.circle.fill")
-                            .font(.title2)
+                    }) {
+                        Image(systemName: "chevron.left")
                             .foregroundColor(.blue)
                     }
-                }
-                .padding(.horizontal)
-            }
-            
-            // Chores for selected day
-            VStack(alignment: .leading, spacing: 15) {
-                HStack {
-                    Text(selectedDay.rawValue.uppercased())
-                        .font(.headline)
-                        .foregroundColor(.gray)
                     
                     Spacer()
                     
-                    Button {
-                        showingChoreForm = true
-                    } label: {
-                        Image(systemName: "plus.circle")
+                    Text(monthFormatter.string(from: weekStart))
+                        .font(.headline)
+                    
+                    Spacer()
+                    
+                    Button(action: {
+                        if let newDate = Calendar.current.date(byAdding: .weekOfYear, value: 1, to: weekStart) {
+                            weekStart = newDate
+                        }
+                    }) {
+                        Image(systemName: "chevron.right")
                             .foregroundColor(.blue)
                     }
                 }
                 .padding(.horizontal)
                 
-                if choresByDay.isEmpty {
-                    Text("No chores for this day")
-                        .foregroundColor(.gray)
+                HStack(spacing: 0) {
+                    ForEach(getWeekDates(), id: \.self) { date in
+                        Button(action: {
+                            selectedDate = date
+                        }) {
+                            VStack {
+                                Text(weekdays[Calendar.current.component(.weekday, from: date) - 1])
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                                
+                                Text("\(Calendar.current.component(.day, from: date))")
+                                    .font(.system(size: 18, weight: .medium))
+                                
+                                // Indicator for selected date
+                                if Calendar.current.isDate(date, inSameDayAs: selectedDate) {
+                                    Circle()
+                                        .fill(Color.blue)
+                                        .frame(width: 6, height: 6)
+                                } else {
+                                    Circle()
+                                        .fill(Color.clear)
+                                        .frame(width: 6, height: 6)
+                                }
+                            }
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 8)
+                            .background(
+                                RoundedRectangle(cornerRadius: 8)
+                                    .fill(Calendar.current.isDate(date, inSameDayAs: selectedDate) ? Color.blue.opacity(0.1) : Color.clear)
+                            )
+                        }
+                    }
+                }
+                .padding(.horizontal, 4)
+            }
+            .padding(.bottom)
+            .background(Color(.systemBackground))
+            .cornerRadius(12)
+            .shadow(color: Color.black.opacity(0.1), radius: 5, x: 0, y: 2)
+            .padding(.horizontal)
+            
+            // Tasks list for selected date
+            List {
+                let tasksForDay = choreViewModel.getTasksForDay(date: selectedDate)
+                
+                if tasksForDay.isEmpty {
+                    Text("No tasks scheduled for this day")
+                        .foregroundColor(.secondary)
+                        .frame(maxWidth: .infinity, alignment: .center)
                         .padding()
                 } else {
-                    ForEach(choresByDay) { chore in
-                        ChoreRow(
-                            chore: chore,
-                            onToggle: { isCompleted in
-                                if let index = chores.firstIndex(where: { $0.id == chore.id }) {
-                                    chores[index].isCompleted = isCompleted
+                    ForEach(tasksForDay) { task in
+                        HStack(spacing: 12) {
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text(task.name)
+                                    .font(.headline)
+                                
+                                if let notes = task.notes, !notes.isEmpty {
+                                    Text(notes)
+                                        .font(.caption)
+                                        .foregroundColor(.secondary)
+                                        .lineLimit(1)
                                 }
-                            },
-                            onEdit: {
-                                choreToEdit = chore
                             }
-                        )
+                            
+                            Spacer()
+                            
+                            // Display assigned person
+                            if let assignedToId = task.assignedTo, 
+                               let user = choreViewModel.getUser(by: assignedToId) {
+                                UserInitialsView(user: user)
+                            }
+                        }
+                        .padding(.vertical, 4)
                     }
                 }
             }
-            
-            Spacer()
-            
-            // Add chore button
-            Button {
-                showingChoreForm = true
-            } label: {
-                Label("Add Chore", systemImage: "plus.circle.fill")
-                    .font(.headline)
-            }
-            .buttonStyle(PrimaryButtonStyle())
-            .padding()
+            .listStyle(PlainListStyle())
         }
-        .sheet(isPresented: $showingUserManagement) {
-            UserManagementView(users: $users)
-        }
-        .sheet(isPresented: $showingChoreForm) {
-            ChoreFormView(chores: $chores, users: users)
-        }
-        .sheet(item: $choreToEdit) { chore in
-            ChoreFormView(chores: $chores, users: users, existingChore: chore)
+        .onAppear {
+            initializeWeekStart()
         }
     }
     
-    private var choresByDay: [Chore] {
-        chores.filter { $0.day == selectedDay }
+    private func initializeWeekStart() {
+        let calendar = Calendar.current
+        weekStart = calendar.date(from: calendar.dateComponents([.yearForWeekOfYear, .weekOfYear], from: Date())) ?? Date()
+    }
+    
+    private func getWeekDates() -> [Date] {
+        let calendar = Calendar.current
+        var weekDates: [Date] = []
+        
+        for dayOffset in 0..<7 {
+            if let date = calendar.date(byAdding: .day, value: dayOffset, to: weekStart) {
+                weekDates.append(date)
+            }
+        }
+        
+        return weekDates
     }
 }
 
-struct DayButton: View {
-    let day: Chore.WeekDay
-    let isSelected: Bool
-    let action: () -> Void
-    
-    var body: some View {
-        Button(action: action) {
-            Text(day.rawValue)
-                .font(.subheadline)
-                .fontWeight(.medium)
-                .padding(.vertical, 8)
-                .padding(.horizontal, 16)
-                .background(isSelected ? Color.blue : Color.clear)
-                .foregroundColor(isSelected ? .white : .primary)
-                .cornerRadius(8)
-        }
-    }
-}
-
-struct UserAvatar: View {
-    let user: User
-    
-    var body: some View {
-        VStack {
-            Image(systemName: user.avatarSystemName)
-                .font(.title2)
-                .foregroundColor(Color(user.color))
-            Text(user.name)
-                .font(.caption)
-        }
-    }
-}
-
-// Update ChoreRow to show assigned user more prominently
-struct ChoreRow: View {
-    let chore: Chore
-    let onToggle: (Bool) -> Void
-    var onEdit: () -> Void
-    
-    var body: some View {
-        HStack {
-            Toggle("", isOn: Binding(
-                get: { chore.isCompleted },
-                set: { onToggle($0) }
-            ))
-            .labelsHidden()
-            
-            VStack(alignment: .leading) {
-                Text(chore.title)
-                    .strikethrough(chore.isCompleted)
-                    .foregroundColor(chore.isCompleted ? .gray : .primary)
-                
-                if let user = chore.assignedTo {
-                    HStack {
-                        Image(systemName: user.avatarSystemName)
-                            .foregroundColor(Color(user.color))
-                        Text(user.name)
-                            .font(.caption)
-                            .foregroundColor(.gray)
-                    }
-                }
-            }
-            
-            Spacer()
-            
-            Button {
-                onEdit()
-            } label: {
-                Image(systemName: "pencil.circle")
-                    .foregroundColor(.blue)
-            }
-        }
-        .padding(.horizontal)
-        .contentShape(Rectangle())
-    }
+#Preview {
+    ChoreCalendarView()
+        .environmentObject(ChoreViewModel())
 } 

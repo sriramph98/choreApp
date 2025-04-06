@@ -1,41 +1,42 @@
 import SwiftUI
 
 struct ChoreFormView: View {
-    @Environment(\.dismiss) private var dismiss
-    @Binding var chores: [Chore]
-    let users: [User]
-    var existingChore: Chore?
+    @EnvironmentObject var choreViewModel: ChoreViewModel
+    @Binding var isPresented: Bool
+    var existingTask: ChoreViewModel.ChoreTask?
     
     @State private var title = ""
-    @State private var selectedDay: Chore.WeekDay
+    @State private var dueDate = Date()
     @State private var selectedUser: User?
+    @State private var notes = ""
     
-    init(chores: Binding<[Chore]>, users: [User], existingChore: Chore? = nil) {
-        self._chores = chores
-        self.users = users
-        self.existingChore = existingChore
-        self._title = State(initialValue: existingChore?.title ?? "")
-        self._selectedDay = State(initialValue: existingChore?.day ?? .monday)
-        self._selectedUser = State(initialValue: existingChore?.assignedTo)
+    init(isPresented: Binding<Bool>, existingTask: ChoreViewModel.ChoreTask? = nil) {
+        self._isPresented = isPresented
+        self.existingTask = existingTask
+        
+        if let task = existingTask {
+            self._title = State(initialValue: task.name)
+            self._dueDate = State(initialValue: task.dueDate)
+            self._notes = State(initialValue: task.notes ?? "")
+        }
     }
     
     var body: some View {
         NavigationView {
             Form {
-                Section("Chore Details") {
+                Section("Task Details") {
                     TextField("Title", text: $title)
                     
-                    Picker("Day", selection: $selectedDay) {
-                        ForEach(Chore.WeekDay.allCases, id: \.self) { day in
-                            Text(day.rawValue).tag(day)
-                        }
-                    }
+                    DatePicker("Due Date", selection: $dueDate, displayedComponents: [.date])
+                    
+                    TextField("Notes", text: $notes)
+                        .frame(height: 100)
                 }
                 
                 Section("Assign To") {
-                    ForEach(users) { user in
+                    ForEach(choreViewModel.users) { user in
                         HStack {
-                            UserAvatar(user: user)
+                            UserInitialsView(user: user, size: 30)
                             Text(user.name)
                             Spacer()
                             if selectedUser?.id == user.id {
@@ -50,47 +51,55 @@ struct ChoreFormView: View {
                     }
                 }
             }
-            .navigationTitle(existingChore == nil ? "New Chore" : "Edit Chore")
+            .navigationTitle(existingTask == nil ? "New Task" : "Edit Task")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
                     Button("Cancel") {
-                        dismiss()
+                        isPresented = false
                     }
                 }
                 
                 ToolbarItem(placement: .navigationBarTrailing) {
-                    Button(existingChore == nil ? "Add" : "Save") {
-                        if existingChore != nil {
-                            updateChore()
+                    Button(existingTask == nil ? "Add" : "Save") {
+                        if let existingTask = existingTask {
+                            updateTask(id: existingTask.id)
                         } else {
-                            addChore()
+                            addTask()
                         }
                     }
                     .disabled(title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                 }
             }
+            .onAppear {
+                if let existingTask = existingTask, 
+                   let assignedTo = existingTask.assignedTo, 
+                   let user = choreViewModel.getUser(by: assignedTo) {
+                    selectedUser = user
+                }
+            }
         }
     }
     
-    private func addChore() {
-        let newChore = Chore(
-            title: title.trimmingCharacters(in: .whitespacesAndNewlines),
-            day: selectedDay,
-            isCompleted: false,
-            assignedTo: selectedUser
+    private func addTask() {
+        choreViewModel.addTask(
+            name: title.trimmingCharacters(in: .whitespacesAndNewlines),
+            dueDate: dueDate,
+            assignedTo: selectedUser?.id,
+            notes: notes.isEmpty ? nil : notes
         )
-        chores.append(newChore)
-        dismiss()
+        isPresented = false
     }
     
-    private func updateChore() {
-        guard let existingChore = existingChore,
-              let index = chores.firstIndex(where: { $0.id == existingChore.id }) else { return }
-        
-        chores[index].title = title.trimmingCharacters(in: .whitespacesAndNewlines)
-        chores[index].day = selectedDay
-        chores[index].assignedTo = selectedUser
-        dismiss()
+    private func updateTask(id: UUID) {
+        choreViewModel.updateTask(
+            id: id,
+            name: title.trimmingCharacters(in: .whitespacesAndNewlines),
+            dueDate: dueDate,
+            isCompleted: nil,
+            assignedTo: selectedUser?.id,
+            notes: notes.isEmpty ? nil : notes
+        )
+        isPresented = false
     }
 } 
