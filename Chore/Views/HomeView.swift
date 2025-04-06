@@ -21,7 +21,6 @@ struct HomeView: View {
                             }
                         }
                     })
-                    .background(Color.clear) // Clear background to let the HomeImage show through
             }
             .tabItem {
                 Label("Tasks", systemImage: "checklist")
@@ -32,7 +31,6 @@ struct HomeView: View {
                 ChoreCalendarView()
                     .navigationTitle("Schedule")
                     .navigationBarTitleDisplayMode(.large)
-                    .background(Color.clear) // Clear background
             }
             .tabItem {
                 Label("Schedule", systemImage: "calendar")
@@ -62,7 +60,6 @@ struct HomeView: View {
                 }
                 .navigationTitle("Chat")
                 .navigationBarTitleDisplayMode(.large)
-                .background(Color.clear) // Clear background
             }
             .tabItem {
                 Label("Chat", systemImage: "message")
@@ -70,34 +67,7 @@ struct HomeView: View {
             .tag(2)
             .disabled(true)
         }
-        .tint(.blue) // Use tint instead of accentColor
-        // Transparent tab bar with blur
-        .onAppear {
-            // Create a transparent tab bar with blur
-            let tabBarAppearance = UITabBarAppearance()
-            tabBarAppearance.configureWithTransparentBackground()
-            
-            // Add blur effect
-            tabBarAppearance.backgroundEffect = UIBlurEffect(style: .systemMaterial)
-            
-            // Customize tab bar items
-            let itemAppearance = UITabBarItemAppearance()
-            tabBarAppearance.stackedLayoutAppearance = itemAppearance
-            
-            UITabBar.appearance().standardAppearance = tabBarAppearance
-            UITabBar.appearance().scrollEdgeAppearance = tabBarAppearance
-            
-            // Transparent navigation bar with blur
-            let navigationBarAppearance = UINavigationBarAppearance()
-            navigationBarAppearance.configureWithTransparentBackground()
-            navigationBarAppearance.backgroundEffect = UIBlurEffect(style: .systemMaterial)
-            navigationBarAppearance.titleTextAttributes = [.foregroundColor: UIColor.label]
-            navigationBarAppearance.largeTitleTextAttributes = [.foregroundColor: UIColor.label]
-
-            UINavigationBar.appearance().standardAppearance = navigationBarAppearance
-            UINavigationBar.appearance().compactAppearance = navigationBarAppearance
-            UINavigationBar.appearance().scrollEdgeAppearance = navigationBarAppearance
-        }
+        .tint(.blue)
         .sheet(isPresented: $showSettings) {
             SettingsView(isPresented: $showSettings)
         }

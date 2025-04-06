@@ -30,37 +30,53 @@ struct OnboardingView: View {
             .padding()
             
             if currentStep == 0 {
-                AddPeopleView()
+                AddPeopleView(showAddPersonSheet: $showAddPersonSheet)
             } else {
-                AddChoresView(commonChores: commonChores)
+                AddChoresView(showAddChoreSheet: $showAddChoreSheet, commonChores: commonChores)
             }
             
             // Bottom navigation
             HStack {
                 if currentStep > 0 {
-                    Button("Back") {
+                    Button {
                         withAnimation {
                             currentStep -= 1
                         }
+                    } label: {
+                        Text("Back")
+                            .frame(width: UIScreen.main.bounds.width * 0.25 - 20)
+                            .padding()
+                            .background(Color(.systemGray5))
+                            .foregroundColor(.primary)
+                            .cornerRadius(10)
                     }
-                    .buttonStyle(.bordered)
                 }
                 
-                Spacer()
-                
                 if currentStep == 0 {
-                    Button("Next") {
+                    Button {
                         withAnimation {
                             currentStep += 1
                         }
+                    } label: {
+                        Text("Next")
+                            .frame(maxWidth: .infinity)
+                            .padding()
+                            .background(choreViewModel.users.count < 2 ? Color.gray.opacity(0.5) : Color.blue)
+                            .foregroundColor(.white)
+                            .cornerRadius(10)
                     }
-                    .buttonStyle(.borderedProminent)
                     .disabled(choreViewModel.users.count < 2)
                 } else {
-                    Button("Start Using App") {
+                    Button {
                         hasCompletedOnboarding = true
+                    } label: {
+                        Text("Start Using App")
+                            .frame(maxWidth: .infinity)
+                            .padding()
+                            .background(choreViewModel.tasks.isEmpty ? Color.gray.opacity(0.5) : Color.blue)
+                            .foregroundColor(.white)
+                            .cornerRadius(10)
                     }
-                    .buttonStyle(.borderedProminent)
                     .disabled(choreViewModel.tasks.isEmpty)
                 }
             }
@@ -89,12 +105,32 @@ struct OnboardingView: View {
     // View for the first step: adding people
     struct AddPeopleView: View {
         @EnvironmentObject var choreViewModel: ChoreViewModel
-        @State private var showAddPersonSheet = false
+        @Binding var showAddPersonSheet: Bool
         
         var body: some View {
             VStack(spacing: 20) {
                 Text("Who will be doing chores?")
                     .font(.headline)
+                
+                // Add Person button at the top
+                Button {
+                    showAddPersonSheet = true
+                } label: {
+                    HStack {
+                        Image(systemName: "person.badge.plus")
+                        Text("Add Person")
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding()
+                    .background(Color.blue)
+                    .foregroundColor(.white)
+                    .cornerRadius(10)
+                }
+                .padding(.horizontal)
+                
+                // Separator
+                Divider()
+                    .padding(.vertical, 8)
                 
                 // Show existing people
                 ScrollView {
@@ -116,27 +152,11 @@ struct OnboardingView: View {
                     .padding()
                 }
                 
-                Button(action: {
-                    showAddPersonSheet = true
-                }) {
-                    HStack {
-                        Image(systemName: "person.badge.plus")
-                        Text("Add Person")
-                    }
-                    .frame(maxWidth: .infinity)
-                    .padding()
-                    .background(Color.blue)
-                    .foregroundColor(.white)
-                    .cornerRadius(10)
-                    .padding(.horizontal)
+                if choreViewModel.users.count < 2 {
+                    Text("Add at least 2 people to continue")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
                 }
-                
-                Text("Add at least 2 people to continue")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-            }
-            .sheet(isPresented: $showAddPersonSheet) {
-                AddPersonSheetView(isPresented: $showAddPersonSheet)
             }
         }
     }
@@ -144,7 +164,7 @@ struct OnboardingView: View {
     // View for the second step: adding chores
     struct AddChoresView: View {
         @EnvironmentObject var choreViewModel: ChoreViewModel
-        @State private var showAddChoreSheet = false
+        @Binding var showAddChoreSheet: Bool
         @State private var selectedChores: [String] = []
         
         let commonChores: [String]
@@ -202,6 +222,23 @@ struct OnboardingView: View {
                         .foregroundColor(.secondary)
                         .padding(.horizontal)
                     
+                    // Add Custom Chore button moved above the chips
+                    Button {
+                        showAddChoreSheet = true
+                    } label: {
+                        HStack {
+                            Image(systemName: "plus.circle")
+                            Text("Add Custom Chore")
+                        }
+                        .frame(maxWidth: .infinity)
+                        .padding()
+                        .background(Color.blue)
+                        .foregroundColor(.white)
+                        .cornerRadius(10)
+                    }
+                    .padding(.horizontal)
+                    .padding(.bottom, 8)
+                    
                     ScrollView {
                         LazyVGrid(columns: [GridItem(.adaptive(minimum: 120))], spacing: 10) {
                             // Show all common chores
@@ -231,29 +268,6 @@ struct OnboardingView: View {
                         .padding()
                     }
                 }
-                
-                Button(action: {
-                    showAddChoreSheet = true
-                }) {
-                    HStack {
-                        Image(systemName: "plus.circle")
-                        Text("Add Custom Chore")
-                    }
-                    .frame(maxWidth: .infinity)
-                    .padding()
-                    .background(Color.blue)
-                    .foregroundColor(.white)
-                    .cornerRadius(10)
-                    .padding(.horizontal)
-                }
-            }
-            .sheet(isPresented: $showAddChoreSheet) {
-                AddChoreSheetView(isPresented: $showAddChoreSheet, onAddChore: { choreName in
-                    // Add to custom chores if not already in common chores
-                    if !commonChores.contains(choreName) && !choreViewModel.customChores.contains(choreName) {
-                        choreViewModel.addCustomChore(choreName)
-                    }
-                })
             }
             .onAppear {
                 // Synchronize selectedChores with the tasks from the view model
@@ -274,10 +288,10 @@ struct ChoreChip: View {
                 .padding(.horizontal, 12)
                 .padding(.vertical, 8)
                 .background(
-                    RoundedRectangle(cornerRadius: 20)
-                        .fill(isSelected ? Color.blue : Color(.systemGray5))
+                    RoundedRectangle(cornerRadius: 8)
+                        .fill(isSelected ? Color.blue.opacity(0.2) : Color(.systemGray6))
                 )
-                .foregroundColor(isSelected ? .white : .primary)
+                .foregroundColor(isSelected ? .blue : .primary)
         }
     }
 }
@@ -340,22 +354,20 @@ struct AddPersonSheetView: View {
                     .padding()
                 
                 // Add button
-                Button(action: {
+                Button {
                     if !name.isEmpty {
                         choreViewModel.addUser(name: name, color: selectedColor)
                         isPresented = false
                     }
-                }) {
+                } label: {
                     Text("Add Person")
-                        .font(.headline)
                         .frame(maxWidth: .infinity)
                         .padding()
-                        .background(name.isEmpty ? Color.gray : Color.blue)
+                        .background(name.isEmpty ? Color.gray.opacity(0.5) : Color.blue)
                         .foregroundColor(.white)
                         .cornerRadius(10)
                 }
                 .disabled(name.isEmpty)
-                .padding()
                 
                 Spacer()
             }
