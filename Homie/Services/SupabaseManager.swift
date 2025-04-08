@@ -48,23 +48,46 @@ class SupabaseManager: ObservableObject {
     /// Check for existing session and set user if available
     @MainActor
     func checkAndSetSession() async {
+        print("Checking for existing Supabase session...")
+        
+        // Start with isLoading true to prevent UI flicker
+        isLoading = true
+        
         do {
-            isLoading = true
-            print("Checking for existing Supabase session...")
-            
-            // Try to get the current session
+            // First try to retrieve the session from Supabase
             let session = try await client.auth.session
             print("Found existing session: \(session.accessToken)")
             
-            // User may be non-optional in this version of the SDK, so no need for guard
-            print("Setting authenticated user: \(session.user.id)")
-            self.authUser = session.user
+            // We have a valid session, set the user and authentication state
+            let user = session.user
+            print("Setting authenticated user: \(user.id)")
+            self.authUser = user
             self.isAuthenticated = true
+            
+            // Save the user ID to UserDefaults to ensure persistence
+            UserDefaults.standard.set(user.id.uuidString, forKey: "lastAuthenticatedUserId")
+            
+            // Verify session is actually valid by making a simple API call
+            if let _ = await fetchUsers() {
+                print("Session verified - successfully fetched users")
+            } else {
+                // If API call fails, session might be invalid or expired
+                print("Session verification failed - could not fetch data")
+                throw NSError(domain: "com.homie.app", code: 401, userInfo: [NSLocalizedDescriptionKey: "Session expired"])
+            }
         } catch {
-            print("No valid session found: \(error.localizedDescription)")
+            print("No valid session found: \(error)")
+            
+            // Clear authentication state
             self.authUser = nil
             self.isAuthenticated = false
+            
+            // Try to recover using the last known user ID if we have one
+            if let lastUserIdString = UserDefaults.standard.string(forKey: "lastAuthenticatedUserId") {
+                print("Found previous user ID: \(lastUserIdString) but could not restore session")
+            }
         }
+        
         isLoading = false
     }
     

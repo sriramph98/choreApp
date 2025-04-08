@@ -13,6 +13,7 @@ struct HomieApp: App {
     @StateObject private var supabaseManager = SupabaseManager.shared
     @AppStorage("hasCompletedLogin") private var hasCompletedLogin = false
     @AppStorage("hasCompletedOnboarding") private var hasCompletedOnboarding = false
+    @AppStorage("isInOfflineMode") private var isInOfflineMode = false
     
     var body: some Scene {
         WindowGroup {
@@ -40,6 +41,13 @@ struct HomieApp: App {
             }
             .onAppear {
                 print("App launched with bundle ID: \(Bundle.main.bundleIdentifier ?? "unknown")")
+                
+                // Restore appropriate app state at launch
+                Task {
+                    await restoreAppState()
+                }
+                
+                // Print URL schemes info for debugging
                 if let urlTypes = Bundle.main.object(forInfoDictionaryKey: "CFBundleURLTypes") as? [[String: Any]] {
                     print("Registered URL schemes:")
                     for urlType in urlTypes {
@@ -52,6 +60,31 @@ struct HomieApp: App {
                 } else {
                     print("No URL schemes found in Info.plist")
                 }
+            }
+        }
+    }
+    
+    @MainActor
+    private func restoreAppState() async {
+        // Check if we were previously authenticated or in offline mode
+        if isInOfflineMode {
+            // Restore offline mode
+            print("Restoring offline mode from app launch")
+            choreViewModel.isOfflineMode = true
+            choreViewModel.loadOfflineData()
+            hasCompletedLogin = true
+        } else {
+            // Try to restore authentication
+            print("Checking for existing authentication at app launch")
+            await supabaseManager.checkAndSetSession()
+            
+            if supabaseManager.isAuthenticated, let userId = supabaseManager.authUser?.id {
+                print("Authenticated session found, restoring user profile")
+                await choreViewModel.switchToProfile(userId: userId)
+                hasCompletedLogin = true
+            } else {
+                print("No authenticated session found at app launch")
+                // Keep hasCompletedLogin as false to show login screen
             }
         }
     }

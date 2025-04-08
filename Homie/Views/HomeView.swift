@@ -70,6 +70,7 @@ struct SettingsView: View {
     @Binding var isPresented: Bool
     @AppStorage("hasCompletedOnboarding") private var hasCompletedOnboarding = false
     @AppStorage("hasCompletedLogin") private var hasCompletedLogin = false
+    @AppStorage("isInOfflineMode") private var isInOfflineMode = false
     @State private var showingLogoutAlert = false
     
     var body: some View {
@@ -211,8 +212,12 @@ struct SettingsView: View {
                             // Save offline data before exiting
                             choreViewModel.saveOfflineData()
                             choreViewModel.isOfflineMode = false
+                            // Clear the offline mode flag in UserDefaults
+                            isInOfflineMode = false
                         } else {
                             _ = await supabaseManager.signOut()
+                            // Clear the saved user ID from UserDefaults
+                            UserDefaults.standard.removeObject(forKey: "lastAuthenticatedUserId")
                         }
                         // Clear all data when logging out
                         await MainActor.run {

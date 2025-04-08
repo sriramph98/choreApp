@@ -4,6 +4,7 @@ struct LoginView: View {
     @EnvironmentObject var choreViewModel: ChoreViewModel
     @AppStorage("hasCompletedLogin") private var hasCompletedLogin = false
     @AppStorage("hasCompletedOnboarding") private var hasCompletedOnboarding = false
+    @AppStorage("isInOfflineMode") private var isInOfflineMode = false
     @StateObject private var supabaseManager = SupabaseManager.shared
     
     @State private var email = ""
@@ -158,23 +159,26 @@ struct LoginView: View {
                 onComplete: continueWithOfflineMode
             )
         }
+        .onAppear {
+            // Always check app state when view appears
+            restoreAppState()
+        }
+        .onReceive(NotificationCenter.default.publisher(for: UIApplication.willEnterForegroundNotification)) { _ in
+            // Also check app state when app returns from background
+            print("App returning to foreground, checking authentication state")
+            Task {
+                await supabaseManager.checkAndSetSession()
+            }
+        }
         .onChange(of: supabaseManager.isAuthenticated) { oldValue, newValue in
             if newValue {
                 hasCompletedLogin = true
                 
-                // When authenticated, clear existing data and load fresh data for this user
+                // When authenticated, load data for this user
                 Task {
                     if let authUser = supabaseManager.authUser {
-                        // First fetch users to ensure we have the current user's profile
-                        if let supabaseUsers = await supabaseManager.fetchUsers() {
-                            if supabaseUsers.isEmpty {
-                                // No profile exists yet, this might be a new sign-up
-                                print("No existing profile found for user \(authUser.id)")
-                            } else {
-                                // Profile exists, switch to it
-                                await choreViewModel.switchToProfile(userId: authUser.id)
-                            }
-                        }
+                        print("User authenticated, loading profile for: \(authUser.id)")
+                        await choreViewModel.switchToProfile(userId: authUser.id)
                     }
                 }
             }
@@ -245,8 +249,9 @@ struct LoginView: View {
         // Save offline user details for future use
         choreViewModel.saveOfflineUser(name, id: id)
         
-        // Set offline mode flag
+        // Set offline mode flag in both the view model and UserDefaults
         choreViewModel.isOfflineMode = true
+        isInOfflineMode = true
         
         // Clear any existing data
         choreViewModel.tasks.removeAll()
@@ -274,10 +279,44 @@ struct LoginView: View {
                 dueDate: Date().addingTimeInterval(86400),
                 assignedTo: id
             )
+            
+            // Save this initial data
+            choreViewModel.saveOfflineData()
         }
         
         // Complete login without authentication
         hasCompletedLogin = true
+    }
+    
+    // Function to restore app state when the app starts
+    private func restoreAppState() {
+        // First check for an existing Supabase session (highest priority)
+        Task {
+            await supabaseManager.checkAndSetSession()
+            
+            // If we have a valid session, the onChange handler for isAuthenticated
+            // will handle setting hasCompletedLogin and loading data
+            
+            // If no active Supabase session, check if we were in offline mode
+            if !supabaseManager.isAuthenticated {
+                if isInOfflineMode {
+                    print("Restoring offline mode session")
+                    
+                    // Set the offline mode flag in the view model
+                    choreViewModel.isOfflineMode = true
+                    
+                    // Load the offline user data and tasks
+                    choreViewModel.loadOfflineData()
+                    
+                    // Complete login to bypass this screen
+                    hasCompletedLogin = true
+                } else {
+                    // Neither authenticated nor offline mode - show login screen
+                    print("No active session found, showing login screen")
+                    hasCompletedLogin = false
+                }
+            }
+        }
     }
 }
 

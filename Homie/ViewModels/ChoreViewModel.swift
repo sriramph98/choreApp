@@ -348,30 +348,52 @@ class ChoreViewModel: ObservableObject {
     
     /// Clears all data and reloads it for the specified user
     func switchToProfile(userId: UUID) async {
-        await MainActor.run {
-            // Clear all existing data
-            tasks.removeAll()
-            users.removeAll()
-            customChores.removeAll()
-            currentUser = nil
-        }
+        print("Switching to profile: \(userId)")
         
-        // Load user data for this specific profile
-        if let supabaseUsers = await supabaseManager.fetchUsers() {
+        // Clear existing data before loading new data
+        tasks.removeAll()
+        users.removeAll()
+        customChores.removeAll()
+        currentUser = nil
+        
+        // Set offline mode to false to ensure we're in online mode
+        isOfflineMode = false
+        UserDefaults.standard.set(false, forKey: "isInOfflineMode")
+        
+        // Fetch users for the specified auth user ID
+        if let supaUsers = await supabaseManager.fetchUsers() {
+            // Process users on the main thread
             await MainActor.run {
-                users = supabaseUsers
-                currentUser = users.first(where: { $0.id == userId })
+                // Add users
+                users.append(contentsOf: supaUsers)
+                
+                // Set current user based on the matched user
+                if let currentUserMatch = users.first(where: { $0.id == userId }) {
+                    currentUser = currentUserMatch
+                } else if let firstUser = users.first {
+                    // Fall back to the first user if we can't find one with matching ID
+                    currentUser = firstUser
+                }
+                
+                print("Switched to profile: \(userId)")
+                
+                // Now that we have users, fetch tasks
+                Task {
+                    await loadTasksForCurrentUser()
+                }
             }
+        } else {
+            print("No users found for authUserId: \(userId)")
         }
-        
-        // Load only tasks for this user
+    }
+    
+    private func loadTasksForCurrentUser() async {
         if let supaTasks = await supabaseManager.fetchTasks() {
             await MainActor.run {
                 tasks = supaTasks
+                print("Loaded \(tasks.count) tasks for current user")
             }
         }
-        
-        print("Switched to profile: \(userId.uuidString)")
     }
     
     // Calendar and schedule functions
