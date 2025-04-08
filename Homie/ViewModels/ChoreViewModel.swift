@@ -6,6 +6,8 @@ class ChoreViewModel: ObservableObject {
     @Published var users: [User] = []
     @Published var customChores: [String] = []
     @Published var currentUser: User?
+    @Published var isOfflineMode = false
+    @Published var offlineUserData: (name: String, id: UUID)? = nil
     private let supabaseManager = SupabaseManager.shared
     
     enum RepeatOption: String, Codable {
@@ -69,8 +71,8 @@ class ChoreViewModel: ObservableObject {
             generateFutureOccurrences(for: newTask, count: 10)
         }
         
-        // Sync new task to Supabase if authenticated
-        if supabaseManager.isAuthenticated {
+        // Sync new task to Supabase if authenticated and not in offline mode
+        if supabaseManager.isAuthenticated && !isOfflineMode {
             Task {
                 await saveTaskToSupabase(newTask)
             }
@@ -175,8 +177,8 @@ class ChoreViewModel: ObservableObject {
             // Update the task in our array
             tasks[index] = task
             
-            // Save to Supabase if authenticated
-            if supabaseManager.isAuthenticated {
+            // Save to Supabase if authenticated and not in offline mode
+            if supabaseManager.isAuthenticated && !isOfflineMode {
                 Task {
                     // Try to update the task, which is more appropriate for existing tasks
                     let success = await supabaseManager.updateTask(task)
@@ -209,7 +211,7 @@ class ChoreViewModel: ObservableObject {
                     self.tasks[i].repeatOption = task.repeatOption
                     
                     // Also save to Supabase
-                    if supabaseManager.isAuthenticated {
+                    if supabaseManager.isAuthenticated && !isOfflineMode {
                         await supabaseManager.updateTask(self.tasks[i])
                     }
                 }
@@ -267,8 +269,8 @@ class ChoreViewModel: ObservableObject {
                 // Remove all child instances
                 self.tasks.removeAll { $0.parentTaskId == id }
                 
-                // Delete child tasks from Supabase if authenticated
-                if self.supabaseManager.isAuthenticated {
+                // Delete child tasks from Supabase if authenticated and not in offline mode
+                if self.supabaseManager.isAuthenticated && !self.isOfflineMode {
                     for childTask in childTasksToDelete {
                         Task {
                             await self.deleteTaskFromSupabase(childTask.id)
@@ -280,8 +282,8 @@ class ChoreViewModel: ObservableObject {
             // Remove the task itself
             self.tasks.removeAll { $0.id == id }
             
-            // Delete from Supabase
-            if self.supabaseManager.isAuthenticated {
+            // Delete from Supabase if authenticated and not in offline mode
+            if self.supabaseManager.isAuthenticated && !self.isOfflineMode {
                 Task {
                     await self.deleteTaskFromSupabase(id)
                 }
@@ -316,10 +318,14 @@ class ChoreViewModel: ObservableObject {
         // Use Task to avoid publishing changes from view updates
         Task { @MainActor in
             users.append(newUser)
-            currentUser = newUser
             
-            // Save the new user to Supabase if authenticated
-            if supabaseManager.isAuthenticated {
+            // Only set as current user if we don't already have one
+            if currentUser == nil {
+                currentUser = newUser
+            }
+            
+            // Save the new user to Supabase if authenticated and not in offline mode
+            if supabaseManager.isAuthenticated && !isOfflineMode {
                 Task {
                     let saved = await supabaseManager.saveUserProfile(newUser)
                     if saved {
@@ -506,6 +512,79 @@ class ChoreViewModel: ObservableObject {
         // Use Task to avoid publishing changes from view updates
         Task { @MainActor in
             currentUser = user
+        }
+    }
+    
+    // Offline mode persistence
+    func saveOfflineUser(_ name: String, id: UUID) {
+        offlineUserData = (name: name, id: id)
+        
+        // Store data in UserDefaults for persistence
+        let defaults = UserDefaults.standard
+        defaults.set(name, forKey: "offlineUserName")
+        defaults.set(id.uuidString, forKey: "offlineUserId")
+    }
+    
+    func loadOfflineUser() -> (name: String, id: UUID)? {
+        if let offlineData = offlineUserData {
+            return offlineData
+        }
+        
+        // Try to load from UserDefaults
+        let defaults = UserDefaults.standard
+        if let name = defaults.string(forKey: "offlineUserName"),
+           let idString = defaults.string(forKey: "offlineUserId"),
+           let id = UUID(uuidString: idString) {
+            offlineUserData = (name: name, id: id)
+            return offlineUserData
+        }
+        
+        return nil
+    }
+    
+    // Save offline tasks and users to UserDefaults
+    func saveOfflineData() {
+        let defaults = UserDefaults.standard
+        
+        // Save tasks
+        if let tasksData = try? JSONEncoder().encode(tasks) {
+            defaults.set(tasksData, forKey: "offlineTasks")
+        }
+        
+        // Save users
+        if let usersData = try? JSONEncoder().encode(users) {
+            defaults.set(usersData, forKey: "offlineUsers")
+        }
+        
+        // Save custom chores
+        defaults.set(customChores, forKey: "offlineCustomChores")
+    }
+    
+    // Load offline data from UserDefaults
+    func loadOfflineData() {
+        let defaults = UserDefaults.standard
+        
+        // Load tasks
+        if let tasksData = defaults.data(forKey: "offlineTasks"),
+           let loadedTasks = try? JSONDecoder().decode([ChoreTask].self, from: tasksData) {
+            tasks = loadedTasks
+        }
+        
+        // Load users
+        if let usersData = defaults.data(forKey: "offlineUsers"),
+           let loadedUsers = try? JSONDecoder().decode([User].self, from: usersData) {
+            users = loadedUsers
+            
+            // Restore current user
+            if let offlineData = loadOfflineUser(),
+               let user = users.first(where: { $0.id == offlineData.id }) {
+                currentUser = user
+            }
+        }
+        
+        // Load custom chores
+        if let loadedChores = defaults.stringArray(forKey: "offlineCustomChores") {
+            customChores = loadedChores
         }
     }
 } 

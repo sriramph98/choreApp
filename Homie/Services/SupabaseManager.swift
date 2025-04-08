@@ -205,9 +205,13 @@ class SupabaseManager: ObservableObject {
             print("User email: \(user.email ?? "No email")")
             print("User metadata: \(user.userMetadata)")
             
-            // 2. Create user profile
+            // 4. Store user and mark as authenticated
+            self.authUser = user
+            self.isAuthenticated = true
+            
+            // 2. Create user profile using the authenticated user's ID
             let newUser = User(
-                id: user.id,
+                id: user.id,  // Use the auth user's ID
                 name: name,
                 avatarSystemName: "person.circle.fill",
                 color: "blue"
@@ -220,10 +224,6 @@ class SupabaseManager: ObservableObject {
             } else {
                 print("Failed to save user profile to Supabase")
             }
-            
-            // 4. Store user and mark as authenticated
-            self.authUser = user
-            self.isAuthenticated = true
             
             // 5. Fetch initial data
             if let users = await fetchUsers() {
@@ -393,12 +393,16 @@ class SupabaseManager: ObservableObject {
     /// Save user profile to Supabase
     @MainActor
     func saveUserProfile(_ user: User) async -> Bool {
-        guard isAuthenticated else { return false }
+        guard isAuthenticated, let authUserId = authUser?.id else { 
+            print("Cannot save profile: No authenticated user")
+            return false 
+        }
         
         do {
+            // Ensure the authUserId value matches the current authenticated user's ID
             let profileData: [String: AnyJSON] = [
                 "id": AnyJSON(stringLiteral: user.id.uuidString),
-                "authuserid": AnyJSON(stringLiteral: authUser?.id.uuidString ?? ""),
+                "authuserid": AnyJSON(stringLiteral: authUserId.uuidString),
                 "name": AnyJSON(stringLiteral: user.name),
                 "avatarsystemname": AnyJSON(stringLiteral: user.avatarSystemName),
                 "color": AnyJSON(stringLiteral: user.color),

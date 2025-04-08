@@ -91,9 +91,15 @@ struct SettingsView: View {
                                 Text(currentUser.name)
                                     .font(.title3)
                                     .fontWeight(.semibold)
-                                Text(supabaseManager.authUser?.email ?? "No email")
-                                    .font(.subheadline)
-                                    .foregroundColor(.secondary)
+                                if choreViewModel.isOfflineMode {
+                                    Text("Offline Mode")
+                                        .font(.subheadline)
+                                        .foregroundColor(.secondary)
+                                } else {
+                                    Text(supabaseManager.authUser?.email ?? "No email")
+                                        .font(.subheadline)
+                                        .foregroundColor(.secondary)
+                                }
                             }
                             .padding(.leading, 8)
                         }
@@ -114,13 +120,19 @@ struct SettingsView: View {
                             Text("Account Type")
                                 .foregroundColor(.secondary)
                             Spacer()
-                            Text(supabaseManager.authUser?.appMetadata["provider"]?.description ?? "Email")
-                                .foregroundColor(.secondary)
-                                .font(.caption)
+                            if choreViewModel.isOfflineMode {
+                                Text("Offline")
+                                    .foregroundColor(.secondary)
+                                    .font(.caption)
+                            } else {
+                                Text(supabaseManager.authUser?.appMetadata["provider"]?.description ?? "Email")
+                                    .foregroundColor(.secondary)
+                                    .font(.caption)
+                            }
                         }
                         
                         // Account created
-                        if let createdAt = supabaseManager.authUser?.createdAt {
+                        if !choreViewModel.isOfflineMode, let createdAt = supabaseManager.authUser?.createdAt {
                             HStack {
                                 Text("Member Since")
                                     .foregroundColor(.secondary)
@@ -169,7 +181,7 @@ struct SettingsView: View {
                     Button {
                         showingLogoutAlert = true
                     } label: {
-                        Label("Log Out", systemImage: "rectangle.portrait.and.arrow.forward")
+                        Text(choreViewModel.isOfflineMode ? "Exit Offline Mode" : "Log Out")
                             .foregroundColor(.red)
                     }
                 }
@@ -191,11 +203,17 @@ struct SettingsView: View {
                     }
                 }
             }
-            .alert("Log Out", isPresented: $showingLogoutAlert) {
+            .alert(choreViewModel.isOfflineMode ? "Exit Offline Mode" : "Log Out", isPresented: $showingLogoutAlert) {
                 Button("Cancel", role: .cancel) { }
-                Button("Log Out", role: .destructive) {
+                Button(choreViewModel.isOfflineMode ? "Exit" : "Log Out", role: .destructive) {
                     Task {
-                        _ = await supabaseManager.signOut()
+                        if choreViewModel.isOfflineMode {
+                            // Save offline data before exiting
+                            choreViewModel.saveOfflineData()
+                            choreViewModel.isOfflineMode = false
+                        } else {
+                            _ = await supabaseManager.signOut()
+                        }
                         // Clear all data when logging out
                         await MainActor.run {
                             choreViewModel.tasks.removeAll()
@@ -210,11 +228,14 @@ struct SettingsView: View {
                     }
                 }
             } message: {
-                Text("Are you sure you want to log out?")
+                Text(choreViewModel.isOfflineMode ? 
+                     "Do you want to exit offline mode? Your data will be saved for next time." : 
+                     "Are you sure you want to log out?")
             }
             .onAppear {
                 // Set the current user based on the authenticated user
-                if let _ = supabaseManager.authUser,
+                if !choreViewModel.isOfflineMode,
+                   let _ = supabaseManager.authUser,
                    let user = choreViewModel.users.first {
                     choreViewModel.setCurrentUser(user)
                 }

@@ -13,6 +13,8 @@ struct LoginView: View {
     @State private var errorMessage = ""
     @State private var showingSignUpSheet = false
     @State private var showingSuccessAlert = false
+    @State private var showingOfflineNamePrompt = false
+    @State private var offlineName = ""
     
     var body: some View {
         ZStack {
@@ -21,23 +23,23 @@ struct LoginView: View {
             
             VStack(spacing: 30) {
                 // Logo and header
-                VStack(spacing: 15) {
-                    Image(systemName: "house.fill")
-                        .font(.system(size: 60))
+                VStack(spacing: 10) {
+                    Image("Logo")
+                        .font(.system(size: 50))
                         .foregroundColor(.blue)
                     
                     Text("Homie")
-                        .font(.largeTitle)
+                        .font(.title)
                         .fontWeight(.bold)
                     
                     Text("Your personal task manager")
-                        .font(.subheadline)
+                        .font(.caption)
                         .foregroundColor(.secondary)
                 }
-                .padding(.top, 60)
+                .padding(.top, 40)
                 
                 // Sign in form
-                VStack(spacing: 25) {
+                VStack(spacing: 15) {
                     TextField("Email", text: $email)
                         .autocapitalization(.none)
                         .keyboardType(.emailAddress)
@@ -81,6 +83,25 @@ struct LoginView: View {
                         .frame(maxWidth: .infinity)
                         .padding()
                         .background(Color(.systemGray6))
+                        .cornerRadius(10)
+                    }
+                    .disabled(supabaseManager.isLoading)
+                    
+                    // Offline mode button
+                    Button {
+                        createOfflineProfile()
+                    } label: {
+                        HStack {
+                            Image(systemName: "wifi.slash")
+                                .resizable()
+                                .frame(width: 20, height: 20)
+                                .foregroundColor(.primary)
+                            Text("Offline Mode")
+                                .fontWeight(.medium)
+                        }
+                        .frame(maxWidth: .infinity)
+                        .padding()
+                        .background(Color(.systemGray5))
                         .cornerRadius(10)
                     }
                     .disabled(supabaseManager.isLoading)
@@ -129,6 +150,13 @@ struct LoginView: View {
                 showingSuccessAlert: $showingSuccessAlert
             )
             .environmentObject(choreViewModel)
+        }
+        .sheet(isPresented: $showingOfflineNamePrompt) {
+            OfflineNamePromptView(
+                isPresented: $showingOfflineNamePrompt,
+                name: $offlineName,
+                onComplete: continueWithOfflineMode
+            )
         }
         .onChange(of: supabaseManager.isAuthenticated) { oldValue, newValue in
             if newValue {
@@ -182,6 +210,74 @@ struct LoginView: View {
                 showingErrorAlert = true
             }
         }
+    }
+    
+    private func createOfflineProfile() {
+        // Check if we already have offline data saved
+        if let offlineUser = choreViewModel.loadOfflineUser() {
+            // User has used offline mode before, reuse existing data
+            continueWithOfflineMode(name: offlineUser.name, id: offlineUser.id)
+        } else {
+            // First time using offline mode, ask for name
+            offlineName = ""
+            showingOfflineNamePrompt = true
+        }
+    }
+    
+    private func continueWithOfflineMode() {
+        // Use the name from the alert, or "Offline User" as default
+        let userName = offlineName.trimmingCharacters(in: .whitespacesAndNewlines)
+        let displayName = userName.isEmpty ? "Offline User" : userName
+        let offlineUserId = UUID()
+        
+        continueWithOfflineMode(name: displayName, id: offlineUserId)
+    }
+    
+    private func continueWithOfflineMode(name: String, id: UUID) {
+        // Create offline user profile
+        let offlineUser = User(
+            id: id,
+            name: name,
+            avatarSystemName: "wifi.slash.circle.fill",
+            color: "gray"
+        )
+        
+        // Save offline user details for future use
+        choreViewModel.saveOfflineUser(name, id: id)
+        
+        // Set offline mode flag
+        choreViewModel.isOfflineMode = true
+        
+        // Clear any existing data
+        choreViewModel.tasks.removeAll()
+        choreViewModel.users.removeAll()
+        choreViewModel.customChores.removeAll()
+        
+        // Try to load previous offline data
+        choreViewModel.loadOfflineData()
+        
+        // If no existing data, create a fresh offline profile
+        if choreViewModel.users.isEmpty {
+            // Add the offline user to the view model
+            choreViewModel.users.append(offlineUser)
+            choreViewModel.currentUser = offlineUser
+            
+            // Add sample tasks for offline mode
+            choreViewModel.addTask(
+                name: "Sample Task 1",
+                dueDate: Date(),
+                assignedTo: id
+            )
+            
+            choreViewModel.addTask(
+                name: "Sample Task 2",
+                dueDate: Date().addingTimeInterval(86400),
+                assignedTo: id
+            )
+        }
+        
+        // Complete login without authentication
+        hasCompletedLogin = true
     }
 }
 
@@ -377,35 +473,12 @@ struct SignUpView: View {
         )
         
         if success {
-            // Create a new user profile
-            let newUser = User(
-                id: supabaseManager.authUser?.id ?? UUID(),
-                name: name,
-                avatarSystemName: "person.circle.fill",
-                color: "blue"
-            )
+            // After successful signup, fetch the user profile from Supabase
+            await choreViewModel.syncUsersFromSupabase()
             
-            // Clear existing data
+            // Set hasCompletedLogin to true to navigate to the main app
             await MainActor.run {
-                choreViewModel.tasks.removeAll()
-                choreViewModel.users.removeAll()
-                choreViewModel.customChores.removeAll()
-                choreViewModel.currentUser = nil
-            }
-            
-            // Add the user to the view model (don't use addUser which adds to existing users)
-            await MainActor.run {
-                choreViewModel.users.append(newUser)
-                choreViewModel.currentUser = newUser
                 hasCompletedLogin = true
-            }
-            
-            // Save the user profile to Supabase
-            let profileSaved = await supabaseManager.saveUserProfile(newUser)
-            print("Profile saved: \(profileSaved)")
-            
-            // Show success alert and dismiss
-            await MainActor.run {
                 showingSuccessAlert = true
                 dismiss()
             }
@@ -413,11 +486,58 @@ struct SignUpView: View {
             await MainActor.run {
                 errorMessage = supabaseManager.authError?.localizedDescription ?? "Sign up failed"
                 showingErrorAlert = true
+                isLoading = false
             }
         }
-        
-        await MainActor.run {
-            isLoading = false
+    }
+}
+
+struct OfflineNamePromptView: View {
+    @Binding var isPresented: Bool
+    @Binding var name: String
+    var onComplete: () -> Void
+    
+    var body: some View {
+        NavigationStack {
+            VStack(spacing: 20) {
+                Text("Please enter your name for the offline profile")
+                    .font(.headline)
+                    .multilineTextAlignment(.center)
+                    .padding()
+                
+                TextField("Your Name", text: $name)
+                    .padding()
+                    .background(Color(.systemGray6))
+                    .cornerRadius(10)
+                    .padding(.horizontal)
+                
+                Button {
+                    onComplete()
+                    isPresented = false
+                } label: {
+                    Text("Continue")
+                        .fontWeight(.bold)
+                        .foregroundColor(.white)
+                        .frame(maxWidth: .infinity)
+                        .padding()
+                        .background(Color.blue)
+                        .cornerRadius(10)
+                }
+                .padding(.horizontal)
+                .disabled(name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                
+                Spacer()
+            }
+            .padding(.top, 30)
+            .navigationTitle("Offline Mode")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") {
+                        isPresented = false
+                    }
+                }
+            }
         }
     }
 }
