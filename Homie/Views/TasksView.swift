@@ -127,8 +127,8 @@ struct TasksView: View {
         
         print("Manual refresh triggered - reloading data...")
         
-        // If online, load tasks for current user
-        if let currentUser = choreViewModel.currentUser {
+        // If online and we have a current user, load tasks
+        if choreViewModel.currentUser != nil {
             await choreViewModel.loadTasksForCurrentUser()
         }
         
@@ -313,26 +313,6 @@ struct TasksView: View {
                         }
                         .padding(.vertical, 8)
                         
-                        // User ID
-                        HStack {
-                            Text("User ID")
-                                .foregroundColor(.secondary)
-                            Spacer()
-                            Text(currentUser.id.uuidString.prefix(8) + "...")
-                                .foregroundColor(.secondary)
-                                .font(.caption)
-                        }
-                        
-                        // Account type
-                        HStack {
-                            Text("Account Type")
-                                .foregroundColor(.secondary)
-                            Spacer()
-                            Text(SupabaseManager.shared.authUser?.appMetadata["provider"]?.description ?? "Email")
-                                .foregroundColor(.secondary)
-                                .font(.caption)
-                        }
-                        
                         // Account created
                         if let createdAt = SupabaseManager.shared.authUser?.createdAt {
                             HStack {
@@ -343,16 +323,6 @@ struct TasksView: View {
                                     .foregroundColor(.secondary)
                                     .font(.caption)
                             }
-                        }
-                        
-                        // Tasks stats
-                        HStack {
-                            Text("Assigned Tasks")
-                                .foregroundColor(.secondary)
-                            Spacer()
-                            Text("\(choreViewModel.tasksAssignedTo(userId: currentUser.id).count)")
-                                .foregroundColor(.secondary)
-                                .font(.caption)
                         }
                     } else {
                         Text("No user profile found")
@@ -430,10 +400,19 @@ struct TasksView: View {
                 }
             }
             .onAppear {
-                // Set the current user based on the authenticated user
-                if let _ = SupabaseManager.shared.authUser,
-                   let user = choreViewModel.users.first {
-                    choreViewModel.setCurrentUser(user)
+                // Set the current user based on the authenticated user's ID
+                if let authUser = SupabaseManager.shared.authUser {
+                    // Find the user profile with the matching auth user ID
+                    if let matchingUser = choreViewModel.users.first(where: { user in
+                        // Compare the user's ID with the authenticated user's ID
+                        user.id == authUser.id
+                    }) {
+                        // Set the found user as current user
+                        choreViewModel.setCurrentUser(matchingUser)
+                        print("Set current user to \(matchingUser.name) with ID \(matchingUser.id)")
+                    } else {
+                        print("No matching user found for auth ID: \(authUser.id)")
+                    }
                 }
             }
         }

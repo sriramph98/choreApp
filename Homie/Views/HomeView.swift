@@ -106,32 +106,6 @@ struct SettingsView: View {
                         }
                         .padding(.vertical, 8)
                         
-                        // User ID
-                        HStack {
-                            Text("User ID")
-                                .foregroundColor(.secondary)
-                            Spacer()
-                            Text(currentUser.id.uuidString.prefix(8) + "...")
-                                .foregroundColor(.secondary)
-                                .font(.caption)
-                        }
-                        
-                        // Account type
-                        HStack {
-                            Text("Account Type")
-                                .foregroundColor(.secondary)
-                            Spacer()
-                            if choreViewModel.isOfflineMode {
-                                Text("Offline")
-                                    .foregroundColor(.secondary)
-                                    .font(.caption)
-                            } else {
-                                Text(supabaseManager.authUser?.appMetadata["provider"]?.description ?? "Email")
-                                    .foregroundColor(.secondary)
-                                    .font(.caption)
-                            }
-                        }
-                        
                         // Account created
                         if !choreViewModel.isOfflineMode, let createdAt = supabaseManager.authUser?.createdAt {
                             HStack {
@@ -142,16 +116,6 @@ struct SettingsView: View {
                                     .foregroundColor(.secondary)
                                     .font(.caption)
                             }
-                        }
-                        
-                        // Tasks stats
-                        HStack {
-                            Text("Assigned Tasks")
-                                .foregroundColor(.secondary)
-                            Spacer()
-                            Text("\(choreViewModel.tasksAssignedTo(userId: currentUser.id).count)")
-                                .foregroundColor(.secondary)
-                                .font(.caption)
                         }
                     } else {
                         Text("No user profile found")
@@ -196,7 +160,7 @@ struct SettingsView: View {
                     }
                 }
             }
-            .navigationTitle("Homie Settings")
+            .navigationTitle("Settings")
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Done") {
@@ -238,11 +202,19 @@ struct SettingsView: View {
                      "Are you sure you want to log out?")
             }
             .onAppear {
-                // Set the current user based on the authenticated user
-                if !choreViewModel.isOfflineMode,
-                   let _ = supabaseManager.authUser,
-                   let user = choreViewModel.users.first {
-                    choreViewModel.setCurrentUser(user)
+                // Set the current user based on the authenticated user's ID
+                if !choreViewModel.isOfflineMode, let authUser = supabaseManager.authUser {
+                    // Find the user profile with the matching auth user ID
+                    if let matchingUser = choreViewModel.users.first(where: { user in
+                        // Compare the user's ID with the authenticated user's ID
+                        user.id == authUser.id
+                    }) {
+                        // Set the found user as current user
+                        choreViewModel.setCurrentUser(matchingUser)
+                        print("Set current user to \(matchingUser.name) with ID \(matchingUser.id)")
+                    } else {
+                        print("No matching user found for auth ID: \(authUser.id)")
+                    }
                 }
             }
         }
