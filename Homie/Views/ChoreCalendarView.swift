@@ -6,6 +6,7 @@ struct ChoreCalendarView: View {
     @State private var weekStart: Date = Date()
     @State private var showingDatePicker = false
     @State private var pickerDate = Date()
+    @State private var selectedTask: ChoreViewModel.ChoreTask?
     
     let weekdays = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
     private let monthFormatter: DateFormatter = {
@@ -99,45 +100,50 @@ struct ChoreCalendarView: View {
                             .padding()
                     } else {
                         ForEach(tasksForDay) { task in
-                            HStack(spacing: 8) {
-                                // Left side: Task name
-                                VStack(alignment: .leading, spacing: 4) {
-                                    Text(task.name)
-                                        .font(.headline)
-                                        .foregroundColor(.primary)
-                                        .strikethrough(task.isCompleted, color: .gray)
-                                        .lineLimit(1)
-                                        .truncationMode(.tail)
-                                        
-                                    // Show repeat frequency text
-                                    if task.repeatOption != .never {
-                                        Text(repeatFrequencyText(task.repeatOption))
-                                            .font(.caption2)
-                                            .foregroundColor(.blue)
-                                            .lineLimit(1)
-                                    }
-                                }
-                                .frame(maxWidth: .infinity, alignment: .leading)
-                                
-                                // Right side: Assigned person with fixed width
-                                if let assignedToId = task.assignedTo, 
-                                   let user = choreViewModel.getUser(by: assignedToId) {
-                                    HStack(spacing: 4) {
-                                        UserInitialsView(user: user, size: 20)
-                                            .shadow(color: .black.opacity(0.1), radius: 1, x: 0, y: 1)
-                                        Text(user.name)
-                                            .font(.caption)
-                                            .foregroundColor(.secondary)
+                            Button {
+                                // Just set the selected task, the sheet will appear automatically
+                                selectedTask = task
+                            } label: {
+                                HStack(spacing: 8) {
+                                    // Left side: Task name
+                                    VStack(alignment: .leading, spacing: 4) {
+                                        Text(task.name)
+                                            .font(.headline)
+                                            .foregroundColor(.primary)
+                                            .strikethrough(task.isCompleted, color: .gray)
                                             .lineLimit(1)
                                             .truncationMode(.tail)
+                                            
+                                        // Show repeat frequency text
+                                        if task.repeatOption != .never {
+                                            Text(repeatFrequencyText(task.repeatOption))
+                                                .font(.caption2)
+                                                .foregroundColor(.blue)
+                                                .lineLimit(1)
+                                        }
                                     }
-                                    .fixedSize(horizontal: true, vertical: false)
+                                    .frame(maxWidth: .infinity, alignment: .leading)
+                                    
+                                    // Right side: Assigned person with fixed width
+                                    if let assignedToId = task.assignedTo, 
+                                       let user = choreViewModel.getUser(by: assignedToId) {
+                                        HStack(spacing: 4) {
+                                            UserInitialsView(user: user, size: 20)
+                                                .shadow(color: .black.opacity(0.1), radius: 1, x: 0, y: 1)
+                                            Text(user.name)
+                                                .font(.caption)
+                                                .foregroundColor(.secondary)
+                                                .lineLimit(1)
+                                                .truncationMode(.tail)
+                                        }
+                                        .fixedSize(horizontal: true, vertical: false)
+                                    }
                                 }
+                                .padding()
+                                .background(Material.regularMaterial.opacity(task.isCompleted ? 0.7 : 1))
+                                .cornerRadius(12)
+                                .padding(.horizontal)
                             }
-                            .padding()
-                            .background(Material.regularMaterial.opacity(task.isCompleted ? 0.7 : 1))
-                            .cornerRadius(12)
-                            .padding(.horizontal)
                         }
                     }
                 }
@@ -166,6 +172,17 @@ struct ChoreCalendarView: View {
                         }
                 }
             }
+        }
+        // Task detail sheet
+        .sheet(item: $selectedTask) { task in
+            TaskDetailView(task: task, onDismiss: {
+                selectedTask = nil
+                // Ensure view model is updated after sheet closes
+                DispatchQueue.main.async {
+                    choreViewModel.objectWillChange.send()
+                }
+            })
+            .environmentObject(choreViewModel)
         }
     }
     

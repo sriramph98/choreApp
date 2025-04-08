@@ -302,6 +302,7 @@ class SupabaseManager: ObservableObject {
                 .from("tasks")
                 .select()
                 .eq("userid", value: stringUserId)
+                .order("createdat", ascending: false) // Get newest first
                 .execute()
                 
             print("Task fetch response status: \(response.status)")
@@ -345,6 +346,68 @@ class SupabaseManager: ObservableObject {
         }
     }
     
+    /// Fetch all tasks that have been modified since a given timestamp
+    @MainActor
+    func fetchTasksModifiedSince(_ timestamp: Date) async -> [ChoreViewModel.ChoreTask]? {
+        guard isAuthenticated, let userId = authUser?.id else { return nil }
+        
+        do {
+            let stringUserId = userId.uuidString
+            let isoFormatter = ISO8601DateFormatter()
+            let timestampString = isoFormatter.string(from: timestamp)
+            
+            print("Fetching tasks modified since \(timestamp)")
+            
+            // Use createdat instead of updatedat since that's what exists in the database
+            let response = try await client
+                .from("tasks")
+                .select()
+                .eq("userid", value: stringUserId)
+                .gt("createdat", value: timestampString)
+                .order("createdat", ascending: false)
+                .execute()
+            
+            print("Modified tasks fetch response status: \(response.status)")
+            
+            let data = response.data
+            
+            // Custom key mapping for database column names to model properties
+            let customKeyMapping: [String: String] = [
+                "id": "id",
+                "userid": "userId",
+                "name": "name",
+                "duedate": "dueDate",
+                "iscompleted": "isCompleted",
+                "assignedto": "assignedTo",
+                "notes": "notes",
+                "repeatoption": "repeatOption",
+                "parenttaskid": "parentTaskId",
+                "createdat": "createdAt"
+            ]
+            
+            let tasks = try decode(data: data, keyMapping: customKeyMapping, as: [TaskModel].self)
+            
+            print("Decoded \(tasks.count) modified tasks since \(timestamp)")
+            
+            // Convert to app's ChoreTask model
+            return tasks.map { task in
+                return ChoreViewModel.ChoreTask(
+                    id: UUID(uuidString: task.id) ?? UUID(),
+                    name: task.name,
+                    dueDate: ISO8601DateFormatter().date(from: task.dueDate) ?? Date(),
+                    isCompleted: task.isCompleted,
+                    assignedTo: task.assignedTo != nil && !task.assignedTo!.isEmpty ? UUID(uuidString: task.assignedTo!) : nil,
+                    notes: task.notes?.isEmpty == true ? nil : task.notes,
+                    repeatOption: ChoreViewModel.RepeatOption(rawValue: task.repeatOption ?? "never") ?? .never,
+                    parentTaskId: task.parentTaskId != nil && !task.parentTaskId!.isEmpty ? UUID(uuidString: task.parentTaskId!) : nil
+                )
+            }
+        } catch {
+            print("Error fetching modified tasks: \(error)")
+            return nil
+        }
+    }
+    
     /// Save a task to Supabase
     @MainActor
     func saveTask(_ task: ChoreViewModel.ChoreTask) async -> Bool {
@@ -353,6 +416,8 @@ class SupabaseManager: ObservableObject {
         print("Saving task with ID: \(task.id) and user_id: \(userId)")
         
         do {
+            let currentTime = ISO8601DateFormatter().string(from: Date())
+            
             // Create a dictionary with the right data types for Supabase
             var taskData: [String: AnyJSON] = [
                 "id": AnyJSON(stringLiteral: task.id.uuidString),
@@ -361,7 +426,8 @@ class SupabaseManager: ObservableObject {
                 "iscompleted": AnyJSON(booleanLiteral: task.isCompleted),
                 "repeatoption": AnyJSON(stringLiteral: task.repeatOption.rawValue),
                 "userid": AnyJSON(stringLiteral: userId.uuidString),
-                "createdat": AnyJSON(stringLiteral: ISO8601DateFormatter().string(from: Date()))
+                "createdat": AnyJSON(stringLiteral: currentTime)
+                // Removed updatedat field that doesn't exist in the database
             ]
             
             // Only add optional fields if they have valid values
@@ -462,6 +528,7 @@ class SupabaseManager: ObservableObject {
                 .from("profiles")
                 .select()
                 .eq("authuserid", value: stringUserId)
+                .order("createdat", ascending: false)
                 .execute()
             
             print("User fetch response status: \(response.status)")
@@ -475,7 +542,8 @@ class SupabaseManager: ObservableObject {
                 "name": "name",
                 "avatarsystemname": "avatarSystemName",
                 "color": "color",
-                "createdat": "createdAt"
+                "createdat": "createdAt",
+                "updatedat": "updatedAt"
             ]
             
             let users = try decode(data: data, keyMapping: customKeyMapping, as: [UserModel].self)
@@ -511,6 +579,7 @@ class SupabaseManager: ObservableObject {
                 "duedate": AnyJSON(stringLiteral: ISO8601DateFormatter().string(from: task.dueDate)),
                 "iscompleted": AnyJSON(booleanLiteral: task.isCompleted),
                 "repeatoption": AnyJSON(stringLiteral: task.repeatOption.rawValue)
+                // Removed updatedat field that doesn't exist in the database
             ]
             
             // Only add optional fields if they have valid values

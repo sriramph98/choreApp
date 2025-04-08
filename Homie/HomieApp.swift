@@ -35,7 +35,9 @@ struct HomieApp: App {
             .onOpenURL { url in
                 // Handle URL callbacks (e.g., from OAuth)
                 print("App received URL: \(url)")
+                // Create an async task to handle the URL
                 Task {
+                    // Add 'await' keyword to fix the Swift 6 error
                     await handleURL(url)
                 }
             }
@@ -46,6 +48,9 @@ struct HomieApp: App {
                 Task {
                     await restoreAppState()
                 }
+                
+                // Register for foreground notifications to sync when app returns
+                setupForegroundNotificationHandler()
                 
                 // Print URL schemes info for debugging
                 if let urlTypes = Bundle.main.object(forInfoDictionaryKey: "CFBundleURLTypes") as? [[String: Any]] {
@@ -59,6 +64,20 @@ struct HomieApp: App {
                     }
                 } else {
                     print("No URL schemes found in Info.plist")
+                }
+            }
+        }
+    }
+    
+    private func setupForegroundNotificationHandler() {
+        NotificationCenter.default.addObserver(forName: UIApplication.willEnterForegroundNotification, object: nil, queue: .main) { _ in
+            print("App returning to foreground")
+            
+            // Only refresh session to ensure it's still valid
+            if hasCompletedLogin && !isInOfflineMode && supabaseManager.isAuthenticated {
+                Task {
+                    // Refresh session to ensure it's still valid
+                    await supabaseManager.checkAndSetSession()
                 }
             }
         }

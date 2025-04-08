@@ -3,11 +3,11 @@ import SwiftUI
 struct TasksView: View {
     @EnvironmentObject var choreViewModel: ChoreViewModel
     @State private var showingAddTaskSheet = false
-    @State private var showingTaskDetailSheet = false
-    @State private var showingPeopleSheet = false
     @State private var selectedTask: ChoreViewModel.ChoreTask?
+    @State private var showingPeopleSheet = false
     @Binding var showSettings: Bool
     @State private var showingSettings = false
+    @State private var isRefreshing = false
     
     init(showSettings: Binding<Bool>) {
         self._showSettings = showSettings
@@ -15,6 +15,12 @@ struct TasksView: View {
     
     var body: some View {
         ScrollView {
+            RefreshControl(isRefreshing: $isRefreshing, coordinateSpaceName: "pullToRefresh") {
+                Task {
+                    await refreshData()
+                }
+            }
+            
             VStack(spacing: 16) {
                 // Tasks Section
                 VStack(alignment: .leading, spacing: 8) {
@@ -57,6 +63,7 @@ struct TasksView: View {
             }
             .padding(.horizontal, 16)
         }
+        .coordinateSpace(name: "pullToRefresh")
         .background(Color.clear)
         .sheet(isPresented: $showingAddTaskSheet) {
             AddChoreSheetView(isPresented: $showingAddTaskSheet, onAddChore: { choreName in
@@ -64,25 +71,14 @@ struct TasksView: View {
                 // The actual task was added in the view's implementation
             }, title: "Add Homie Task", buttonText: "Add Task")
         }
-        .sheet(isPresented: $showingTaskDetailSheet, onDismiss: {
-            // Reset selectedTask when the sheet is dismissed
-            selectedTask = nil
-        }) {
-            if let task = selectedTask {
-                // Force the ID here to ensure proper instantiation
-                TaskDetailView(task: task, isPresented: $showingTaskDetailSheet)
-                    .id("taskDetail-\(task.id)")
-                    .onAppear {
-                        // Ensure the view has all task data on first appearance
-                        print("Task detail view appeared for: \(task.name)")
-                    }
-                    .onDisappear {
-                        // Make sure UI updates when the sheet is dismissed
-                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                            choreViewModel.objectWillChange.send()
-                        }
-                    }
-            }
+        .sheet(item: $selectedTask) { task in
+            TaskDetailView(task: task, onDismiss: {
+                selectedTask = nil
+                // Ensure view model is updated after sheet closes
+                DispatchQueue.main.async {
+                    choreViewModel.objectWillChange.send()
+                }
+            })
         }
         .sheet(isPresented: $showingPeopleSheet) {
             PeopleManagementView(isPresented: $showingPeopleSheet)
@@ -121,16 +117,36 @@ struct TasksView: View {
         }
     }
     
+    // Refresh data by reloading from Supabase
+    private func refreshData() async {
+        guard !choreViewModel.isOfflineMode else {
+            // If offline, don't try to sync with server
+            isRefreshing = false
+            return
+        }
+        
+        print("Manual refresh triggered - reloading data...")
+        
+        // If online, load tasks for current user
+        if let currentUser = choreViewModel.currentUser {
+            await choreViewModel.loadTasksForCurrentUser()
+        }
+        
+        // After refresh completes, update UI
+        await MainActor.run {
+            isRefreshing = false
+            
+            // Show a subtle haptic feedback to indicate the refresh completed
+            let generator = UINotificationFeedbackGenerator()
+            generator.notificationOccurred(.success)
+        }
+    }
+    
     @ViewBuilder
     private func taskButton(for task: ChoreViewModel.ChoreTask, showDate: Bool = true) -> some View {
         Button {
-            // Set the selected task first
+            // Just set the selected task, the sheet will open automatically
             selectedTask = task
-            
-            // Then present the sheet with a slight delay to ensure the task is set
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
-                showingTaskDetailSheet = true
-            }
         } label: {
             HStack(spacing: 8) {
                 // Left side: Task name and assigned person
@@ -244,7 +260,8 @@ struct TasksView: View {
         _ = choreViewModel.getUpcomingTasks(days: 60)
         
         return choreViewModel.tasks.filter { task in
-            !task.isCompleted && calendar.isDate(task.dueDate, inSameDayAs: today)
+            // Include completed tasks, will show with strikethrough
+            calendar.isDate(task.dueDate, inSameDayAs: today)
         }
     }
     
@@ -261,6 +278,7 @@ struct TasksView: View {
         let upcomingTasks = choreViewModel.getUpcomingTasks(days: 30)
         
         // Filter tasks that are after today but within this week
+        // Include completed tasks, will show with strikethrough
         return upcomingTasks.filter { task in
             let taskDate = calendar.startOfDay(for: task.dueDate)
             let todayDate = calendar.startOfDay(for: today)
@@ -453,7 +471,7 @@ struct UserInitialsView: View {
 struct TaskDetailView: View {
     @EnvironmentObject var choreViewModel: ChoreViewModel
     let task: ChoreViewModel.ChoreTask
-    @Binding var isPresented: Bool
+    let onDismiss: () -> Void
     
     // State variables for all editable fields
     @State private var taskName: String
@@ -461,10 +479,12 @@ struct TaskDetailView: View {
     @State private var repeatOption: ChoreViewModel.RepeatOption
     @State private var dueDate: Date
     @State private var selectedUserId: UUID?
+    @Environment(\.dismiss) private var dismiss
     
-    init(task: ChoreViewModel.ChoreTask, isPresented: Binding<Bool>) {
+    init(task: ChoreViewModel.ChoreTask, onDismiss: @escaping () -> Void) {
+        print("Initializing TaskDetailView for task: \(task.name)")
         self.task = task
-        self._isPresented = isPresented
+        self.onDismiss = onDismiss
         
         // Initialize all state variables
         self._taskName = State(initialValue: task.name)
@@ -556,7 +576,7 @@ struct TaskDetailView: View {
                         // Delete task button
                         Button(role: .destructive) {
                             choreViewModel.deleteTask(id: task.id)
-                            isPresented = false
+                            onDismiss()
                         } label: {
                             HStack {
                                 Spacer()
@@ -570,7 +590,7 @@ struct TaskDetailView: View {
                     Section {
                         Button(role: .destructive) {
                             choreViewModel.deleteTask(id: task.id)
-                            isPresented = false
+                            onDismiss()
                         } label: {
                             HStack {
                                 Spacer()
@@ -586,7 +606,8 @@ struct TaskDetailView: View {
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") {
-                        isPresented = false
+                        dismiss()
+                        onDismiss()
                     }
                 }
                 
@@ -602,9 +623,13 @@ struct TaskDetailView: View {
                             notes: nil,
                             repeatOption: repeatOption
                         )
-                        isPresented = false
+                        dismiss()
+                        onDismiss()
                     }
                 }
+            }
+            .onAppear {
+                print("TaskDetailView appeared for task: \(task.name), ID: \(task.id)")
             }
             .id(task.id) // Force view recreation when task changes
         }
@@ -697,6 +722,56 @@ struct PeopleManagementView: View {
                 AddPersonView(isPresented: $showAddPersonSheet)
             }
         }
+    }
+}
+
+// Custom refresh control for SwiftUI
+struct RefreshControl: View {
+    @Binding var isRefreshing: Bool
+    let coordinateSpaceName: String
+    let onRefresh: () -> Void
+    
+    @State private var refreshStarted: Bool = false
+    @State private var pullDistance: CGFloat = 0.0
+    private let pullThreshold: CGFloat = 100.0
+    
+    var body: some View {
+        GeometryReader { geometry in
+            ZStack(alignment: .center) {
+                if isRefreshing || pullDistance > pullThreshold {
+                    ProgressView()
+                        .progressViewStyle(CircularProgressViewStyle())
+                        .scaleEffect(1.2)
+                        .frame(width: 35, height: 35)
+                } else if pullDistance > 0 {
+                    // Show downward arrow that changes opacity based on pull distance
+                    Image(systemName: "arrow.down.circle")
+                        .font(.system(size: 24))
+                        .foregroundColor(.blue)
+                        .opacity(min(pullDistance / pullThreshold, 1.0))
+                        .rotationEffect(.degrees(Double(pullDistance / pullThreshold) * 180))
+                }
+            }
+            .frame(width: geometry.size.width)
+            .offset(y: -pullDistance > 0 ? 0 : -pullDistance)
+            .onChange(of: geometry.frame(in: .named(coordinateSpaceName)).minY) { oldValue, newValue in
+                // Calculate pull distance based on scroll position
+                pullDistance = max(0, newValue)
+                
+                // Detect when pull exceeds threshold and starts a refresh
+                if newValue > pullThreshold && !refreshStarted && !isRefreshing {
+                    refreshStarted = true
+                    isRefreshing = true
+                    onRefresh()
+                }
+                
+                // Reset refresh tracking when scroll position returns to top
+                if newValue <= 0 {
+                    refreshStarted = false
+                }
+            }
+        }
+        .frame(height: max(0, pullDistance))
     }
 }
 

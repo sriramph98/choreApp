@@ -339,7 +339,7 @@ struct SignUpView: View {
     
     var body: some View {
         NavigationStack {
-            VStack(spacing: 20) {
+                VStack(spacing: 20) {
                 // Name field
                 VStack(alignment: .leading, spacing: 8) {
                     Text("Name")
@@ -354,50 +354,50 @@ struct SignUpView: View {
                         .autocorrectionDisabled()
                 }
                 
-                // Email field
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("Email")
-                        .font(.headline)
-                        .foregroundColor(.secondary)
+                    // Email field
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Email")
+                            .font(.headline)
+                            .foregroundColor(.secondary)
+                        
+                        TextField("your@email.com", text: $email)
+                            .keyboardType(.emailAddress)
+                            .autocapitalization(.none)
+                            .autocorrectionDisabled()
+                            .padding()
+                            .background(Color(.systemGray6))
+                            .cornerRadius(12)
+                    }
                     
-                    TextField("your@email.com", text: $email)
-                        .keyboardType(.emailAddress)
-                        .autocapitalization(.none)
-                        .autocorrectionDisabled()
-                        .padding()
-                        .background(Color(.systemGray6))
-                        .cornerRadius(12)
-                }
-                
-                // Password field
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("Password")
-                        .font(.headline)
-                        .foregroundColor(.secondary)
-                    
-                    HStack {
-                        Group {
-                            if isSecured {
+                    // Password field
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Password")
+                            .font(.headline)
+                            .foregroundColor(.secondary)
+                        
+                        HStack {
+                            Group {
+                                if isSecured {
                                 SecureField("Create password", text: $password)
-                            } else {
+                                } else {
                                 TextField("Create password", text: $password)
                             }
+                            }
+                            .padding()
+                            .autocapitalization(.none)
+                            .autocorrectionDisabled()
+                            
+                            Button {
+                                isSecured.toggle()
+                            } label: {
+                                Image(systemName: isSecured ? "eye.slash" : "eye")
+                                    .foregroundColor(.gray)
+                            }
+                            .padding(.trailing, 12)
                         }
-                        .padding()
-                        .autocapitalization(.none)
-                        .autocorrectionDisabled()
+                        .background(Color(.systemGray6))
+                        .cornerRadius(12)
                         
-                        Button {
-                            isSecured.toggle()
-                        } label: {
-                            Image(systemName: isSecured ? "eye.slash" : "eye")
-                                .foregroundColor(.gray)
-                        }
-                        .padding(.trailing, 12)
-                    }
-                    .background(Color(.systemGray6))
-                    .cornerRadius(12)
-                    
                     if !password.isEmpty {
                         Text("Password must be at least 6 characters")
                             .font(.caption)
@@ -436,30 +436,30 @@ struct SignUpView: View {
                 Spacer()
                 
                 // Sign up button
-                Button {
-                    Task {
+                    Button {
+                        Task {
                         await signUp()
-                    }
-                } label: {
-                    Group {
-                        if isLoading {
-                            ProgressView()
-                                .progressViewStyle(CircularProgressViewStyle(tint: .white))
-                        } else {
-                            Text("Sign Up")
-                                .font(.headline)
                         }
-                    }
-                    .frame(maxWidth: .infinity)
-                    .padding()
+                    } label: {
+                        Group {
+                        if isLoading {
+                                ProgressView()
+                                    .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                            } else {
+                            Text("Sign Up")
+                                    .font(.headline)
+                            }
+                        }
+                        .frame(maxWidth: .infinity)
+                        .padding()
                     .background(isFormValid ? Color.blue : Color.blue.opacity(0.3))
-                    .foregroundColor(.white)
-                    .cornerRadius(12)
-                }
+                        .foregroundColor(.white)
+                        .cornerRadius(12)
+                    }
                 .disabled(!isFormValid || isLoading)
                 .padding(.horizontal)
             }
-            .padding()
+                            .padding()
             .navigationTitle("Create Account")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -471,13 +471,13 @@ struct SignUpView: View {
                             .foregroundColor(.gray)
                     }
                 }
-            }
-            .alert(isPresented: $showingErrorAlert) {
-                Alert(
+        }
+        .alert(isPresented: $showingErrorAlert) {
+            Alert(
                     title: Text("Sign Up Error"),
-                    message: Text(errorMessage),
-                    dismissButton: .default(Text("OK"))
-                )
+                message: Text(errorMessage),
+                dismissButton: .default(Text("OK"))
+            )
             }
         }
     }
@@ -511,7 +511,7 @@ struct SignUpView: View {
             name: name
         )
         
-        if success {
+            if success {
             // After successful signup, fetch the user profile from Supabase
             await choreViewModel.syncUsersFromSupabase()
             

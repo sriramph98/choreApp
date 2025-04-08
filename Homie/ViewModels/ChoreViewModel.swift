@@ -9,6 +9,7 @@ class ChoreViewModel: ObservableObject {
     @Published var isOfflineMode = false
     @Published var offlineUserData: (name: String, id: UUID)? = nil
     private let supabaseManager = SupabaseManager.shared
+    private var lastSyncTime: Date = Date().addingTimeInterval(-3600) // Start with 1 hour ago
     
     enum RepeatOption: String, Codable {
         case never
@@ -60,6 +61,130 @@ class ChoreViewModel: ObservableObject {
         }
     }
     
+    // Pull changes from server and update local data
+    private func pullChangesFromServer() async {
+        print("Pulling changes from server since \(lastSyncTime)")
+        let currentSyncTime = Date()
+        
+        // Always sync users since they're lightweight
+        if let latestUsers = await supabaseManager.fetchUsers() {
+            await MainActor.run {
+                updateLocalUsers(with: latestUsers)
+            }
+        }
+        
+        // For tasks, only get ones that changed since last sync
+        if let modifiedTasks = await supabaseManager.fetchTasksModifiedSince(lastSyncTime) {
+            if !modifiedTasks.isEmpty {
+                print("Found \(modifiedTasks.count) modified tasks since last sync")
+                await MainActor.run {
+                    updateModifiedTasks(with: modifiedTasks)
+                }
+            } else {
+                print("No tasks modified since last sync")
+            }
+        }
+        
+        // Update the sync timestamp for the next sync
+        lastSyncTime = currentSyncTime
+    }
+    
+    // Update only modified tasks to reduce data transfer and processing
+    private func updateModifiedTasks(with modifiedTasks: [ChoreTask]) {
+        // Efficiently update modified tasks by using a dictionary lookup
+        var tasksDict = Dictionary(uniqueKeysWithValues: tasks.map { ($0.id, $0) })
+        
+        for modifiedTask in modifiedTasks {
+            // Replace or add the modified task
+            tasksDict[modifiedTask.id] = modifiedTask
+        }
+        
+        // Convert back to array
+        tasks = Array(tasksDict.values)
+    }
+    
+    // Full sync when needed (first login, manual sync request)
+    func fullSync() async {
+        guard !isOfflineMode, supabaseManager.isAuthenticated else { return }
+        
+        print("Performing full sync of all data")
+        
+        // Get all users
+        if let allUsers = await supabaseManager.fetchUsers() {
+            await MainActor.run {
+                updateLocalUsers(with: allUsers)
+            }
+        }
+        
+        // Get all tasks
+        if let allTasks = await supabaseManager.fetchTasks() {
+            await MainActor.run {
+                tasks = allTasks
+                print("Full sync completed with \(tasks.count) tasks")
+            }
+        }
+        
+        // Reset the last sync time
+        lastSyncTime = Date()
+    }
+    
+    // Manually trigger a sync (can be called when returning to foreground or after making changes)
+    func manualSync() async {
+        guard !isOfflineMode, supabaseManager.isAuthenticated else { return }
+        
+        print("Manual sync requested")
+        await pullChangesFromServer()
+    }
+    
+    // Update local users with server data while preserving unsaved changes
+    private func updateLocalUsers(with serverUsers: [User]) {
+        // Find users that only exist locally
+        let localOnlyUsers = users.filter { localUser in
+            !serverUsers.contains { $0.id == localUser.id }
+        }
+        
+        // Update existing users and add new ones from server
+        for serverUser in serverUsers {
+            if let index = users.firstIndex(where: { $0.id == serverUser.id }) {
+                // Update existing user with server data
+                users[index] = serverUser
+            } else {
+                // Add new user from server
+                users.append(serverUser)
+            }
+        }
+        
+        // Add back any local-only users
+        for localUser in localOnlyUsers {
+            if !users.contains(where: { $0.id == localUser.id }) {
+                users.append(localUser)
+            }
+        }
+        
+        // Ensure current user is still set properly
+        if let currentUserId = currentUser?.id, let updatedUser = users.first(where: { $0.id == currentUserId }) {
+            currentUser = updatedUser
+        }
+    }
+    
+    // Update local tasks with server data while preserving unsaved changes
+    private func updateLocalTasks(with serverTasks: [ChoreTask]) {
+        // Track task IDs that have been modified locally but not yet saved to server
+        let localOnlyTasks = tasks.filter { localTask in
+            !serverTasks.contains { $0.id == localTask.id }
+        }
+        
+        // Replace tasks with server data
+        var updatedTasks = serverTasks
+        
+        // Keep any local-only tasks
+        for localTask in localOnlyTasks {
+            updatedTasks.append(localTask)
+        }
+        
+        tasks = updatedTasks
+    }
+    
     // Task management functions
     func addTask(name: String, dueDate: Date, assignedTo: UUID?, notes: String? = nil, repeatOption: RepeatOption = .never) {
         let newTask = ChoreTask(name: name, dueDate: dueDate, isCompleted: false, assignedTo: assignedTo, notes: notes, repeatOption: repeatOption)
@@ -75,6 +200,9 @@ class ChoreViewModel: ObservableObject {
         if supabaseManager.isAuthenticated && !isOfflineMode {
             Task {
                 await saveTaskToSupabase(newTask)
+                
+                // Force a sync after adding a task to ensure it appears on other devices
+                await manualSync()
             }
         }
     }
@@ -186,6 +314,9 @@ class ChoreViewModel: ObservableObject {
                         // If update fails (perhaps task doesn't exist yet), try saving it
                         _ = await supabaseManager.saveTask(task)
                     }
+                    
+                    // Force a sync after updating a task to ensure changes appear on other devices
+                    await manualSync()
                 }
             }
             
@@ -212,7 +343,8 @@ class ChoreViewModel: ObservableObject {
                     
                     // Also save to Supabase
                     if supabaseManager.isAuthenticated && !isOfflineMode {
-                        await supabaseManager.updateTask(self.tasks[i])
+                        // Add await to fix the unused result warning
+                        _ = await supabaseManager.updateTask(self.tasks[i])
                     }
                 }
             }
@@ -257,7 +389,8 @@ class ChoreViewModel: ObservableObject {
         // Get the task before removing it
         guard let task = tasks.first(where: { $0.id == id }) else { return }
         
-        DispatchQueue.main.async {
+        // Use MainActor.run instead of DispatchQueue.main.async for actor isolation
+        Task { @MainActor in
             // Make a local copy of child tasks if needed
             var childTasksToDelete: [ChoreTask] = []
             
@@ -286,6 +419,9 @@ class ChoreViewModel: ObservableObject {
             if self.supabaseManager.isAuthenticated && !self.isOfflineMode {
                 Task {
                     await self.deleteTaskFromSupabase(id)
+                    
+                    // Force a sync after deleting a task to ensure changes appear on other devices
+                    await self.manualSync()
                 }
             }
         }
@@ -350,13 +486,13 @@ class ChoreViewModel: ObservableObject {
     func switchToProfile(userId: UUID) async {
         print("Switching to profile: \(userId)")
         
-        // Clear existing data before loading new data
-        tasks.removeAll()
-        users.removeAll()
-        customChores.removeAll()
+        // Clear any existing data
+        tasks = []
+        users = []
+        customChores = []
         currentUser = nil
         
-        // Set offline mode to false to ensure we're in online mode
+        // Disable offline mode since we're switching to a profile
         isOfflineMode = false
         UserDefaults.standard.set(false, forKey: "isInOfflineMode")
         
@@ -387,7 +523,8 @@ class ChoreViewModel: ObservableObject {
         }
     }
     
-    private func loadTasksForCurrentUser() async {
+    // Make this method public for refresh functionality
+    func loadTasksForCurrentUser() async {
         if let supaTasks = await supabaseManager.fetchTasks() {
             await MainActor.run {
                 tasks = supaTasks
@@ -496,7 +633,8 @@ class ChoreViewModel: ObservableObject {
     // Supabase sync functions
     func syncTasksFromSupabase() async {
         if let supaTasks = await supabaseManager.fetchTasks() {
-            DispatchQueue.main.async {
+            // Use MainActor.run instead of DispatchQueue.main.async for actor isolation
+            await MainActor.run {
                 // Only replace tasks from the database, keeping any local ones
                 // that haven't been synced yet
                 let existingIds = Set(supaTasks.map { $0.id })
@@ -519,7 +657,8 @@ class ChoreViewModel: ObservableObject {
     // User management with Supabase
     func syncUsersFromSupabase() async {
         if let supaUsers = await supabaseManager.fetchUsers() {
-            DispatchQueue.main.async {
+            // Use MainActor.run instead of DispatchQueue.main.async for actor isolation
+            await MainActor.run {
                 // Add any new users from Supabase
                 for user in supaUsers {
                     if !self.users.contains(where: { $0.id == user.id }) {
