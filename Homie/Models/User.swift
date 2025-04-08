@@ -4,39 +4,33 @@ import SwiftUI
 struct User: Identifiable, Codable {
     var id: UUID
     var name: String
-    var avatarSystemName: String
-    var color: String // Store as a string to make it easier to persist
+    var avatarSystemName: String // System SF Symbol name
+    var color: String
     
-    // Computed property to get SwiftUI Color from string
+    // Will be used for UI
     var uiColor: Color {
-        switch color.lowercased() {
-        case "red":
-            return .red
-        case "blue":
-            return .blue
-        case "green":
-            return .green
-        case "orange":
-            return .orange
-        case "purple":
-            return .purple
-        case "pink":
-            return .pink
-        default:
-            return .blue
-        }
+        Color.colorFromString(color)
     }
     
-    init(id: UUID = UUID(), name: String, avatarSystemName: String, color: String) {
+    static var sampleUsers: [User] = [
+        User(id: UUID(), name: "You", avatarSystemName: "person.circle.fill", color: "blue"),
+        User(id: UUID(), name: "Partner", avatarSystemName: "person.circle.fill", color: "green"),
+        User(id: UUID(), name: "Roommate", avatarSystemName: "person.circle.fill", color: "red")
+    ]
+}
+
+struct Household: Identifiable, Codable {
+    var id: UUID
+    var name: String
+    var creatorId: UUID
+    var members: [UUID]
+    var createdAt: Date
+    
+    init(id: UUID = UUID(), name: String, creatorId: UUID, members: [UUID] = [], createdAt: Date = Date()) {
         self.id = id
         self.name = name
-        self.avatarSystemName = avatarSystemName
-        self.color = color
+        self.creatorId = creatorId
+        self.members = members
+        self.createdAt = createdAt
     }
-    
-    static let sampleUsers = [
-        User(name: "You", avatarSystemName: "person.circle.fill", color: "blue"),
-        User(name: "John", avatarSystemName: "person.circle.fill", color: "green"),
-        User(name: "Sarah", avatarSystemName: "person.circle.fill", color: "purple")
-    ]
-} 
+}

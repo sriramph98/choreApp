@@ -254,7 +254,7 @@ struct OnboardingView: View {
                                             // Add to view model with a random assignment
                                             if !choreViewModel.tasks.contains(where: { $0.name == chore }) {
                                                 let randomUser = choreViewModel.users.randomElement()
-                                                choreViewModel.addTask(
+                                                _ = choreViewModel.addTask(
                                                     name: chore,
                                                     dueDate: Date().addingTimeInterval(Double.random(in: 0...7) * 86400),
                                                     assignedTo: randomUser?.id
@@ -444,7 +444,7 @@ struct AddChoreSheetView: View {
                             onAddChore(choreName)
                             
                             // Also add it as a task with the selected assignment
-                            choreViewModel.addTask(
+                            _ = choreViewModel.addTask(
                                 name: choreName,
                                 dueDate: dueDate,
                                 assignedTo: selectedUserId,

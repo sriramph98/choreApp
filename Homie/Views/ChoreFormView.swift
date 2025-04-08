@@ -82,7 +82,7 @@ struct ChoreFormView: View {
     }
     
     private func addTask() {
-        choreViewModel.addTask(
+        _ = choreViewModel.addTask(
             name: title.trimmingCharacters(in: .whitespacesAndNewlines),
             dueDate: dueDate,
             assignedTo: selectedUser?.id,

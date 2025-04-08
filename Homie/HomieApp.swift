@@ -14,6 +14,7 @@ struct HomieApp: App {
     @AppStorage("hasCompletedLogin") private var hasCompletedLogin = false
     @AppStorage("hasCompletedOnboarding") private var hasCompletedOnboarding = false
     @AppStorage("isInOfflineMode") private var isInOfflineMode = false
+    @AppStorage("hasSelectedHousehold") private var hasSelectedHousehold = false
     
     var body: some Scene {
         WindowGroup {
@@ -26,8 +27,12 @@ struct HomieApp: App {
                     // Show onboarding after login if not completed
                     OnboardingView()
                         .environmentObject(choreViewModel)
+                } else if !hasSelectedHousehold && !isInOfflineMode {
+                    // Show household selection if logged in but no household selected
+                    HouseholdListView()
+                        .environmentObject(choreViewModel)
                 } else {
-                    // Show main content if both login and onboarding are completed
+                    // Show main content if both login and onboarding are completed and household is selected
                     HomeView()
                         .environmentObject(choreViewModel)
                 }
@@ -92,6 +97,7 @@ struct HomieApp: App {
             choreViewModel.isOfflineMode = true
             choreViewModel.loadOfflineData()
             hasCompletedLogin = true
+            hasSelectedHousehold = true  // Skip household selection in offline mode
         } else {
             // Try to restore authentication
             print("Checking for existing authentication at app launch")
@@ -100,10 +106,20 @@ struct HomieApp: App {
             if supabaseManager.isAuthenticated, let userId = supabaseManager.authUser?.id {
                 print("Authenticated session found, restoring user profile")
                 await choreViewModel.switchToProfile(userId: userId)
+                
+                // Also fetch households if authenticated
+                await choreViewModel.fetchHouseholds()
+                
+                // If we've previously selected a household, try to restore it
+                if hasSelectedHousehold, let firstHousehold = choreViewModel.households.first {
+                    await choreViewModel.switchToHousehold(firstHousehold)
+                }
+                
                 hasCompletedLogin = true
             } else {
                 print("No authenticated session found at app launch")
                 // Keep hasCompletedLogin as false to show login screen
+                hasSelectedHousehold = false
             }
         }
     }

@@ -4,13 +4,31 @@ struct HomeView: View {
     @EnvironmentObject var choreViewModel: ChoreViewModel
     @State private var selectedTab = 0
     @State private var showSettings = false
+    @State private var showHouseholdList = false
+    @AppStorage("hasSelectedHousehold") private var hasSelectedHousehold = false
     
     var body: some View {
         TabView(selection: $selectedTab) {
             NavigationStack {
                 TasksView(showSettings: $showSettings)
-                    .navigationTitle("Tasks")
+                    .navigationTitle(choreViewModel.currentHousehold?.name ?? "Tasks")
                     .navigationBarTitleDisplayMode(.large)
+                    .toolbar {
+                        ToolbarItem(placement: .navigationBarLeading) {
+                            Button {
+                                showHouseholdList = true
+                            } label: {
+                                HStack {
+                                    Image(systemName: "house")
+                                    Text(choreViewModel.currentHousehold?.name ?? "Home")
+                                        .font(.subheadline)
+                                    Image(systemName: "chevron.down")
+                                        .font(.caption)
+                                }
+                            }
+                            .buttonStyle(PlainButtonStyle())
+                        }
+                    }
             }
             .tabItem {
                 Label("Tasks", systemImage: "checklist")
@@ -61,6 +79,24 @@ struct HomeView: View {
         .sheet(isPresented: $showSettings) {
             SettingsView(isPresented: $showSettings)
         }
+        .sheet(isPresented: $showHouseholdList) {
+            HouseholdListView()
+                .environmentObject(choreViewModel)
+                .onDisappear {
+                    refreshAllData()
+                }
+        }
+    }
+    
+    // Force a reload of task data to ensure UI is updated
+    private func refreshAllData() {
+        Task {
+            // Re-fetch tasks with current household filter
+            if let currentHousehold = choreViewModel.currentHousehold {
+                print("Refreshing data for household: \(currentHousehold.name)")
+                await choreViewModel.loadTasksForCurrentUser()
+            }
+        }
     }
 }
 
@@ -71,6 +107,7 @@ struct SettingsView: View {
     @AppStorage("hasCompletedOnboarding") private var hasCompletedOnboarding = false
     @AppStorage("hasCompletedLogin") private var hasCompletedLogin = false
     @AppStorage("isInOfflineMode") private var isInOfflineMode = false
+    @AppStorage("hasSelectedHousehold") private var hasSelectedHousehold = false
     @State private var showingLogoutAlert = false
     
     var body: some View {
@@ -128,6 +165,34 @@ struct SettingsView: View {
                         SettingsPeopleView()
                     } label: {
                         Label("Manage People", systemImage: "person.2")
+                    }
+                }
+                
+                Section(header: Text("Household")) {
+                    if let currentHousehold = choreViewModel.currentHousehold {
+                        HStack {
+                            Text("Current Household")
+                                .foregroundColor(.secondary)
+                            Spacer()
+                            Text(currentHousehold.name)
+                                .foregroundColor(.secondary)
+                                .font(.subheadline)
+                        }
+                        
+                        NavigationLink {
+                            HouseholdMembersView(household: currentHousehold)
+                        } label: {
+                            Label("Manage Members", systemImage: "person.2")
+                        }
+                        
+                        Button {
+                            // Reset household selection and close settings
+                            hasSelectedHousehold = false
+                            isPresented = false
+                        } label: {
+                            Label("Switch Household", systemImage: "house.circle")
+                                .foregroundColor(.primary)
+                        }
                     }
                 }
                 

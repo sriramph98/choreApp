@@ -289,19 +289,27 @@ class SupabaseManager: ObservableObject {
     
     // MARK: - Database Methods
     
-    /// Fetch all tasks for the current user
+    /// Fetch all tasks for the current user and household
     @MainActor
-    func fetchTasks() async -> [ChoreViewModel.ChoreTask]? {
+    func fetchTasks(householdId: UUID? = nil) async -> [ChoreViewModel.ChoreTask]? {
         guard isAuthenticated, let userId = authUser?.id else { return nil }
         
         do {
             let stringUserId = userId.uuidString
             print("Fetching tasks for user_id: \(stringUserId)")
             
-            let response = try await client
-                .from("tasks")
-                .select()
-                .eq("userid", value: stringUserId)
+            // Start building the query
+            let query = client.from("tasks").select()
+            
+            // Filter by user ID - we don't filter by household ID yet since the column doesn't exist
+            let finalQuery = query.eq("userid", value: stringUserId)
+            
+            // Log if we're trying to filter by household ID (but can't)
+            if householdId != nil {
+                print("Note: Ignoring household filter because householdid column doesn't exist in database yet")
+            }
+            
+            let response = try await finalQuery
                 .order("createdat", ascending: false) // Get newest first
                 .execute()
                 
@@ -328,18 +336,52 @@ class SupabaseManager: ObservableObject {
             print("Decoded \(tasks.count) tasks for user \(stringUserId)")
             
             // Convert to app's ChoreTask model
-            return tasks.map { task in
+            let choreTasks = tasks.map { task in
+                // Create UUID from task ID
+                let taskId = UUID(uuidString: task.id) ?? UUID()
+                
+                // Parse due date
+                let dueDate = ISO8601DateFormatter().date(from: task.dueDate) ?? Date()
+                
+                // Handle assignedTo
+                var assignedTo: UUID? = nil
+                if let assignedToStr = task.assignedTo, !assignedToStr.isEmpty {
+                    assignedTo = UUID(uuidString: assignedToStr)
+                }
+                
+                // Handle notes
+                let notes = task.notes?.isEmpty == true ? nil : task.notes
+                
+                // Handle repeat option
+                let repeatOption = ChoreViewModel.RepeatOption(rawValue: task.repeatOption ?? "never") ?? .never
+                
+                // Handle parent task ID
+                var parentTaskId: UUID? = nil
+                if let parentIdStr = task.parentTaskId, !parentIdStr.isEmpty {
+                    parentTaskId = UUID(uuidString: parentIdStr)
+                }
+                
+                // Setting householdId to the requested one since the database doesn't have this column yet
                 return ChoreViewModel.ChoreTask(
-                    id: UUID(uuidString: task.id) ?? UUID(),
+                    id: taskId,
                     name: task.name,
-                    dueDate: ISO8601DateFormatter().date(from: task.dueDate) ?? Date(),
+                    dueDate: dueDate,
                     isCompleted: task.isCompleted,
-                    assignedTo: task.assignedTo != nil && !task.assignedTo!.isEmpty ? UUID(uuidString: task.assignedTo!) : nil,
-                    notes: task.notes?.isEmpty == true ? nil : task.notes,
-                    repeatOption: ChoreViewModel.RepeatOption(rawValue: task.repeatOption ?? "never") ?? .never,
-                    parentTaskId: task.parentTaskId != nil && !task.parentTaskId!.isEmpty ? UUID(uuidString: task.parentTaskId!) : nil
+                    assignedTo: assignedTo,
+                    notes: notes,
+                    repeatOption: repeatOption,
+                    parentTaskId: parentTaskId,
+                    householdId: householdId // Use the passed household ID until database schema is updated
                 )
             }
+            
+            // If a household ID was provided, filter the tasks in memory
+            if let householdId = householdId {
+                print("Filtering \(choreTasks.count) tasks for household \(householdId) in memory")
+                return choreTasks
+            }
+            
+            return choreTasks
         } catch {
             print("Error fetching tasks for user \(userId.uuidString): \(error)")
             return nil
@@ -391,15 +433,39 @@ class SupabaseManager: ObservableObject {
             
             // Convert to app's ChoreTask model
             return tasks.map { task in
+                // Create UUID from task ID
+                let taskId = UUID(uuidString: task.id) ?? UUID()
+                
+                // Parse due date
+                let dueDate = ISO8601DateFormatter().date(from: task.dueDate) ?? Date()
+                
+                // Handle assignedTo
+                var assignedTo: UUID? = nil
+                if let assignedToStr = task.assignedTo, !assignedToStr.isEmpty {
+                    assignedTo = UUID(uuidString: assignedToStr)
+                }
+                
+                // Handle notes
+                let notes = task.notes?.isEmpty == true ? nil : task.notes
+                
+                // Handle repeat option
+                let repeatOption = ChoreViewModel.RepeatOption(rawValue: task.repeatOption ?? "never") ?? .never
+                
+                // Handle parent task ID
+                var parentTaskId: UUID? = nil
+                if let parentIdStr = task.parentTaskId, !parentIdStr.isEmpty {
+                    parentTaskId = UUID(uuidString: parentIdStr)
+                }
+                
                 return ChoreViewModel.ChoreTask(
-                    id: UUID(uuidString: task.id) ?? UUID(),
+                    id: taskId,
                     name: task.name,
-                    dueDate: ISO8601DateFormatter().date(from: task.dueDate) ?? Date(),
+                    dueDate: dueDate,
                     isCompleted: task.isCompleted,
-                    assignedTo: task.assignedTo != nil && !task.assignedTo!.isEmpty ? UUID(uuidString: task.assignedTo!) : nil,
-                    notes: task.notes?.isEmpty == true ? nil : task.notes,
-                    repeatOption: ChoreViewModel.RepeatOption(rawValue: task.repeatOption ?? "never") ?? .never,
-                    parentTaskId: task.parentTaskId != nil && !task.parentTaskId!.isEmpty ? UUID(uuidString: task.parentTaskId!) : nil
+                    assignedTo: assignedTo,
+                    notes: notes,
+                    repeatOption: repeatOption,
+                    parentTaskId: parentTaskId
                 )
             }
         } catch {
@@ -410,7 +476,7 @@ class SupabaseManager: ObservableObject {
     
     /// Save a task to Supabase
     @MainActor
-    func saveTask(_ task: ChoreViewModel.ChoreTask) async -> Bool {
+    func saveTask(_ task: ChoreViewModel.ChoreTask, householdId: UUID? = nil) async -> Bool {
         guard isAuthenticated, let userId = authUser?.id else { return false }
         
         print("Saving task with ID: \(task.id) and user_id: \(userId)")
@@ -427,8 +493,12 @@ class SupabaseManager: ObservableObject {
                 "repeatoption": AnyJSON(stringLiteral: task.repeatOption.rawValue),
                 "userid": AnyJSON(stringLiteral: userId.uuidString),
                 "createdat": AnyJSON(stringLiteral: currentTime)
-                // Removed updatedat field that doesn't exist in the database
             ]
+            
+            // Add household ID if provided
+            if let householdId = householdId ?? task.householdId {
+                taskData["householdid"] = AnyJSON(stringLiteral: householdId.uuidString)
+            }
             
             // Only add optional fields if they have valid values
             if let assignedTo = task.assignedTo, !assignedTo.uuidString.isEmpty {
@@ -552,8 +622,11 @@ class SupabaseManager: ObservableObject {
             
             // Convert to app's User model
             return users.map { user in
+                // Create UUID from user ID
+                let userId = UUID(uuidString: user.id) ?? UUID()
+                
                 return User(
-                    id: UUID(uuidString: user.id) ?? UUID(),
+                    id: userId,
                     name: user.name,
                     avatarSystemName: user.avatarSystemName,
                     color: user.color
@@ -652,6 +725,174 @@ class SupabaseManager: ObservableObject {
         
         return result
     }
+    
+    // MARK: - Household Methods
+    
+    /// Create a new household in Supabase
+    @MainActor
+    func createHousehold(_ household: Household) async -> Bool {
+        guard isAuthenticated, let userId = authUser?.id else { return false }
+        
+        do {
+            // Create a dictionary with the right data types for Supabase
+            let householdData: [String: AnyJSON] = [
+                "id": AnyJSON(stringLiteral: household.id.uuidString),
+                "name": AnyJSON(stringLiteral: household.name),
+                "creatorid": AnyJSON(stringLiteral: userId.uuidString),
+                "members": try AnyJSON(household.members.map { AnyJSON(stringLiteral: $0.uuidString) }),
+                "createdat": AnyJSON(stringLiteral: ISO8601DateFormatter().string(from: household.createdAt))
+            ]
+            
+            print("Creating household with data: \(householdData)")
+            
+            let response = try await client
+                .from("households")
+                .insert(householdData)
+                .execute()
+            
+            print("Household creation response: \(response)")
+            return true
+        } catch {
+            print("Error creating household: \(error)")
+            return false
+        }
+    }
+    
+    /// Fetch all households for the current user
+    @MainActor
+    func fetchHouseholds() async -> [Household]? {
+        guard isAuthenticated, let userId = authUser?.id else { return nil }
+        
+        do {
+            let stringUserId = userId.uuidString
+            print("Fetching households for user ID: \(stringUserId)")
+            
+            // Fetch households where the user is a member or creator
+            let response = try await client
+                .from("households")
+                .select()
+                .or("creatorid.eq.\(stringUserId),members.cs.{\"\(stringUserId)\"}")
+                .order("createdat", ascending: false)
+                .execute()
+            
+            print("Household fetch response status: \(response.status)")
+            
+            let data = response.data
+            
+            // Print raw JSON data to debug column names
+            if let jsonString = String(data: data, encoding: .utf8) {
+                print("Raw household JSON data: \(jsonString)")
+            }
+            
+            // Custom key mapping
+            let customKeyMapping: [String: String] = [
+                "id": "id",
+                "name": "name",
+                "creatorid": "creatorid",
+                "members": "members",
+                "createdat": "createdat"
+            ]
+            
+            let households = try decode(data: data, keyMapping: customKeyMapping, as: [HouseholdModel].self)
+            
+            print("Decoded \(households.count) households")
+            
+            // Debug print the first household
+            if let firstHousehold = households.first {
+                print("First household: id=\(firstHousehold.id), name=\(firstHousehold.name), creatorid=\(firstHousehold.creatorid)")
+            }
+            
+            // Convert to app's Household model
+            return households.map { household in
+                // Process member IDs
+                var memberIds: [UUID] = []
+                if let members = household.members {
+                    memberIds = members.compactMap { UUID(uuidString: $0) }
+                }
+                
+                // Create household ID
+                let householdId = UUID(uuidString: household.id) ?? UUID()
+                
+                // Create creator ID
+                let creatorId = UUID(uuidString: household.creatorid) ?? UUID()
+                
+                // Parse creation date
+                let createdAt = ISO8601DateFormatter().date(from: household.createdat) ?? Date()
+                
+                return Household(
+                    id: householdId,
+                    name: household.name,
+                    creatorId: creatorId,
+                    members: memberIds,
+                    createdAt: createdAt
+                )
+            }
+        } catch {
+            print("Error fetching households: \(error)")
+            return nil
+        }
+    }
+    
+    /// Add a user to a household
+    @MainActor
+    func addUserToHousehold(userId: UUID, householdId: UUID) async -> Bool {
+        guard isAuthenticated else { return false }
+        
+        do {
+            // First, fetch the current household to get existing members
+            let response = try await client
+                .from("households")
+                .select()
+                .eq("id", value: householdId.uuidString)
+                .execute()
+            
+            let data = response.data
+            
+            // Print raw JSON data to debug column names
+            if let jsonString = String(data: data, encoding: .utf8) {
+                print("Raw household JSON data for addUserToHousehold: \(jsonString)")
+            }
+            
+            let customKeyMapping: [String: String] = [
+                "id": "id",
+                "name": "name",
+                "creatorid": "creatorid",
+                "members": "members",
+                "createdat": "createdat"
+            ]
+            
+            if let households = try? decode(data: data, keyMapping: customKeyMapping, as: [HouseholdModel].self),
+               let household = households.first {
+                
+                // Get current members and add the new user
+                var members = household.members ?? []
+                let userIdString = userId.uuidString
+                
+                // Add the user if not already a member
+                if !members.contains(userIdString) {
+                    members.append(userIdString)
+                    
+                    // Update the household with the new members list
+                    let updateResponse = try await client
+                        .from("households")
+                        .update(["members": try AnyJSON(members.map { AnyJSON(stringLiteral: $0) })])
+                        .eq("id", value: householdId.uuidString)
+                        .execute()
+                    
+                    print("Update household response: \(updateResponse)")
+                    return true
+                } else {
+                    // User is already a member
+                    return true
+                }
+            }
+            
+            return false
+        } catch {
+            print("Error adding user to household: \(error)")
+            return false
+        }
+    }
 }
 
 // MARK: - Data Models for Supabase
@@ -667,6 +908,7 @@ struct TaskModel: Codable {
     let notes: String?
     let repeatOption: String?
     let parentTaskId: String?
+    let householdId: String?
     let createdAt: String
 }
 
@@ -678,4 +920,13 @@ struct UserModel: Codable {
     let avatarSystemName: String
     let color: String
     let createdAt: String
+}
+
+// Used for Supabase decoding
+struct HouseholdModel: Codable {
+    let id: String
+    let name: String
+    let creatorid: String  // Changed back to match database column name
+    let members: [String]?
+    let createdat: String  // Changed back to match database column name
 } 

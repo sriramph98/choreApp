@@ -436,7 +436,7 @@ struct UserInitialsView: View {
     var body: some View {
         ZStack {
             Circle()
-                .fill(colorFromString(user.color))
+                .fill(Color.colorFromString(user.color))
             
             Text(initials)
                 .font(.system(size: size * 0.4))

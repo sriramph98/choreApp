@@ -23,7 +23,7 @@ struct UserManagementView: View {
                         Spacer()
                         ForEach(availableColors, id: \.self) { color in
                             Circle()
-                                .fill(colorFromString(color))
+                                .fill(Color.colorFromString(color))
                                 .frame(width: 24, height: 24)
                                 .overlay(
                                     Circle()
@@ -45,7 +45,7 @@ struct UserManagementView: View {
                     ForEach(users) { user in
                         HStack {
                             Image(systemName: user.avatarSystemName)
-                                .foregroundColor(colorFromString(user.color))
+                                .foregroundColor(Color.colorFromString(user.color))
                             Text(user.name)
                             Spacer()
                         }
@@ -70,6 +70,7 @@ struct UserManagementView: View {
         guard !trimmedName.isEmpty else { return }
         
         let newUser = User(
+            id: UUID(),
             name: trimmedName,
             avatarSystemName: "person.circle.fill",
             color: selectedColor

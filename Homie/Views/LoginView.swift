@@ -268,13 +268,13 @@ struct LoginView: View {
             choreViewModel.currentUser = offlineUser
             
             // Add sample tasks for offline mode
-            choreViewModel.addTask(
+            _ = choreViewModel.addTask(
                 name: "Sample Task 1",
                 dueDate: Date(),
                 assignedTo: id
             )
             
-            choreViewModel.addTask(
+            _ = choreViewModel.addTask(
                 name: "Sample Task 2",
                 dueDate: Date().addingTimeInterval(86400),
                 assignedTo: id

@@ -35,32 +35,34 @@ extension Color {
     static var systemPurple: Color {
         return Color(UIColor.systemPurple)
     }
-}
-
-// Helper functions to convert string color names to Color objects
-func colorFromString(_ colorName: String) -> Color {
-    switch colorName.lowercased() {
-    case "blue", "systemblue":
-        return Color.systemBlue
-    case "green", "systemgreen":
-        return Color.systemGreen
-    case "red", "systemred":
-        return Color.systemRed
-    case "purple", "systempurple":
-        return Color.systemPurple
-    case "orange", "systemorange":
-        return Color(UIColor.systemOrange)
-    case "yellow", "systemyellow":
-        return Color(UIColor.systemYellow)
-    case "pink", "systempink":
-        return Color(UIColor.systemPink)
-    case "cyan", "systemcyan", "teal", "systemteal":
-        return Color(UIColor.systemTeal)
-    case "indigo", "systemindigo":
-        return Color.indigo
-    case "mint", "systemmint":
-        return Color.mint
-    default:
-        return Color.systemBlue // Default fallback
+    
+    // Helper function to convert string color names to Color objects
+    static func colorFromString(_ colorName: String) -> Color {
+        switch colorName.lowercased() {
+        case "blue", "systemblue":
+            return Color.systemBlue
+        case "green", "systemgreen":
+            return Color.systemGreen
+        case "red", "systemred":
+            return Color.systemRed
+        case "purple", "systempurple":
+            return Color.systemPurple
+        case "orange", "systemorange":
+            return Color(UIColor.systemOrange)
+        case "yellow", "systemyellow":
+            return Color(UIColor.systemYellow)
+        case "pink", "systempink":
+            return Color(UIColor.systemPink)
+        case "cyan", "systemcyan", "teal", "systemteal":
+            return Color(UIColor.systemTeal)
+        case "indigo", "systemindigo":
+            return Color.indigo
+        case "mint", "systemmint":
+            return Color.mint
+        case "black":
+            return Color.black
+        default:
+            return Color.systemBlue // Default fallback
+        }
     }
 } 

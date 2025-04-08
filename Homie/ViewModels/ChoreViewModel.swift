@@ -8,6 +8,8 @@ class ChoreViewModel: ObservableObject {
     @Published var currentUser: User?
     @Published var isOfflineMode = false
     @Published var offlineUserData: (name: String, id: UUID)? = nil
+    @Published var households: [Household] = []
+    @Published var currentHousehold: Household?
     private let supabaseManager = SupabaseManager.shared
     private var lastSyncTime: Date = Date().addingTimeInterval(-3600) // Start with 1 hour ago
     
@@ -28,8 +30,9 @@ class ChoreViewModel: ObservableObject {
         var notes: String?
         var repeatOption: RepeatOption = .never
         var parentTaskId: UUID? // Reference to the original task for repeating tasks
+        var householdId: UUID? // Reference to the household this task belongs to
         
-        init(id: UUID = UUID(), name: String, dueDate: Date, isCompleted: Bool, assignedTo: UUID?, notes: String? = nil, repeatOption: RepeatOption = .never, parentTaskId: UUID? = nil) {
+        init(id: UUID = UUID(), name: String, dueDate: Date, isCompleted: Bool, assignedTo: UUID?, notes: String? = nil, repeatOption: RepeatOption = .never, parentTaskId: UUID? = nil, householdId: UUID? = nil) {
             self.id = id
             self.name = name
             self.dueDate = dueDate
@@ -38,6 +41,7 @@ class ChoreViewModel: ObservableObject {
             self.notes = notes
             self.repeatOption = repeatOption
             self.parentTaskId = parentTaskId
+            self.householdId = householdId
         }
     }
     
@@ -186,35 +190,49 @@ class ChoreViewModel: ObservableObject {
     }
     
     // Task management functions
-    func addTask(name: String, dueDate: Date, assignedTo: UUID?, notes: String? = nil, repeatOption: RepeatOption = .never) {
-        let newTask = ChoreTask(name: name, dueDate: dueDate, isCompleted: false, assignedTo: assignedTo, notes: notes, repeatOption: repeatOption)
-        tasks.append(newTask)
+    func addTask(name: String, dueDate: Date, isCompleted: Bool = false, assignedTo: UUID? = nil, notes: String? = nil, repeatOption: RepeatOption = .never, householdId: UUID? = nil) -> ChoreTask {
+        // Create a new task
+        let task = ChoreTask(
+            id: UUID(),
+            name: name,
+            dueDate: dueDate,
+            isCompleted: isCompleted,
+            assignedTo: assignedTo,
+            notes: notes,
+            repeatOption: repeatOption,
+            parentTaskId: nil,
+            householdId: householdId ?? currentHousehold?.id
+        )
         
-        // If this is a repeating task, generate the next few occurrences in advance
+        // Add the task to our array and save it
+        tasks.append(task)
+        
+        // Generate future tasks if repeating
         if repeatOption != .never {
-            // Generate 10 occurrences to ensure we have enough for the visible future
-            generateFutureOccurrences(for: newTask, count: 10)
+            generateFutureOccurrences(for: task)
         }
         
-        // Sync new task to Supabase if authenticated and not in offline mode
-        if supabaseManager.isAuthenticated && !isOfflineMode {
+        // If connected to Supabase, save the task
+        if supabaseManager.isAuthenticated {
             Task {
-                await saveTaskToSupabase(newTask)
-                
-                // Force a sync after adding a task to ensure it appears on other devices
-                await manualSync()
+                await saveTaskToSupabase(task)
             }
+        } else {
+            // Save task locally
+            saveOfflineTasks()
         }
+        
+        return task
     }
     
     // Generate future occurrences of a repeating task
-    private func generateFutureOccurrences(for task: ChoreTask, count: Int) {
+    private func generateFutureOccurrences(for task: ChoreTask) {
         let calendar = Calendar.current
         var currentDate = task.dueDate
         var generatedTasks = [task]  // Include the original task in checks
         var newTasks: [ChoreTask] = []
         
-        for _ in 0..<count {
+        for _ in 0..<10 {
             // Calculate the next due date based on repeat option
             guard let nextDate = calculateNextDueDate(from: currentDate, option: task.repeatOption) else {
                 continue
@@ -234,7 +252,8 @@ class ChoreViewModel: ObservableObject {
                     assignedTo: task.assignedTo,
                     notes: task.notes,
                     repeatOption: task.repeatOption,
-                    parentTaskId: task.id
+                    parentTaskId: task.id,
+                    householdId: task.householdId // Use same household as parent task
                 )
                 
                 newTasks.append(newOccurrence)
@@ -302,6 +321,11 @@ class ChoreViewModel: ObservableObject {
                 task.repeatOption = repeatOption
             }
             
+            // Ensure household ID is set (if missing and we have a current household)
+            if task.householdId == nil {
+                task.householdId = currentHousehold?.id
+            }
+            
             // Update the task in our array
             tasks[index] = task
             
@@ -359,7 +383,7 @@ class ChoreViewModel: ObservableObject {
         removeAllFutureOccurrences(fromTaskId: id)
         
         // Generate new occurrences based on the updated original task
-        generateFutureOccurrences(for: originalTask, count: 3)
+        generateFutureOccurrences(for: originalTask)
     }
     
     private func removeAllFutureOccurrences(fromTaskId id: UUID) {
@@ -379,7 +403,8 @@ class ChoreViewModel: ObservableObject {
             assignedTo: task.assignedTo,
             notes: task.notes,
             repeatOption: task.repeatOption,
-            parentTaskId: task.id
+            parentTaskId: task.id,
+            householdId: task.householdId // Keep same household as parent
         )
         
         tasks.append(newTask)
@@ -434,7 +459,7 @@ class ChoreViewModel: ObservableObject {
             
             // Also add it as a task with a random assignment
             let randomUser = users.randomElement()
-            addTask(
+            let _ = addTask(
                 name: choreName,
                 dueDate: Date().addingTimeInterval(Double.random(in: 0...7) * 86400),
                 assignedTo: randomUser?.id
@@ -443,32 +468,24 @@ class ChoreViewModel: ObservableObject {
     }
     
     // User management functions
-    func addUser(name: String, color: String) {
-        let newUser = User(
-            id: UUID(),
-            name: name,
-            avatarSystemName: "person.circle.fill",
-            color: color
-        )
+    func addUser(name: String, color: String, addToCurrentHousehold: Bool = true) {
+        let newUser = User(id: UUID(), name: name, avatarSystemName: "person.circle.fill", color: color)
         
-        // Use Task to avoid publishing changes from view updates
-        Task { @MainActor in
-            users.append(newUser)
-            
-            // Only set as current user if we don't already have one
-            if currentUser == nil {
-                currentUser = newUser
-            }
-            
-            // Save the new user to Supabase if authenticated and not in offline mode
-            if supabaseManager.isAuthenticated && !isOfflineMode {
-                Task {
-                    let saved = await supabaseManager.saveUserProfile(newUser)
-                    if saved {
-                        print("User profile saved to Supabase: \(newUser.name)")
-                    } else {
-                        print("Failed to save user profile to Supabase: \(newUser.name)")
-                    }
+        // Check if user with same name already exists
+        guard !users.contains(where: { $0.name.lowercased() == name.lowercased() }) else {
+            return
+        }
+        
+        users.append(newUser)
+        
+        // If we have a current user and we're online, save to Supabase
+        if supabaseManager.isAuthenticated && !isOfflineMode {
+            Task {
+                _ = await supabaseManager.saveUserProfile(newUser)
+                
+                // If we have a current household, also add this user to it
+                if addToCurrentHousehold, let currentHousehold = currentHousehold {
+                    _ = await addUserToHousehold(userId: newUser.id, householdId: currentHousehold.id)
                 }
             }
         }
@@ -491,6 +508,8 @@ class ChoreViewModel: ObservableObject {
         users = []
         customChores = []
         currentUser = nil
+        households = []
+        currentHousehold = nil
         
         // Disable offline mode since we're switching to a profile
         isOfflineMode = false
@@ -513,9 +532,17 @@ class ChoreViewModel: ObservableObject {
                 
                 print("Switched to profile: \(userId)")
                 
-                // Now that we have users, fetch tasks
+                // Now that we have users, fetch households for this user
                 Task {
-                    await loadTasksForCurrentUser()
+                    await fetchHouseholds()
+                    
+                    // After fetching households, load tasks for the selected household
+                    if let firstHousehold = households.first {
+                        await switchToHousehold(firstHousehold)
+                    } else {
+                        // If no households, load tasks for the user (without household filter)
+                        await loadTasksForCurrentUser()
+                    }
                 }
             }
         } else {
@@ -525,10 +552,23 @@ class ChoreViewModel: ObservableObject {
     
     // Make this method public for refresh functionality
     func loadTasksForCurrentUser() async {
+        // Fetch all tasks for the current user without filtering by household in the database
         if let supaTasks = await supabaseManager.fetchTasks() {
             await MainActor.run {
-                tasks = supaTasks
-                print("Loaded \(tasks.count) tasks for current user")
+                if let currentHousehold = currentHousehold {
+                    // Filter tasks for the current household in memory
+                    let filteredTasks = supaTasks.filter { task in
+                        // If no household ID on the task, include it in all households for now
+                        // until the database schema is updated
+                        task.householdId == nil || task.householdId == currentHousehold.id
+                    }
+                    tasks = filteredTasks
+                    print("Loaded \(tasks.count) tasks for current household \(currentHousehold.name) - filtered in memory")
+                } else {
+                    // No household filter needed
+                    tasks = supaTasks
+                    print("Loaded \(tasks.count) tasks for current user (no household filter)")
+                }
             }
         }
     }
@@ -536,8 +576,16 @@ class ChoreViewModel: ObservableObject {
     // Calendar and schedule functions
     func getTasksForDay(date: Date) -> [ChoreTask] {
         let calendar = Calendar.current
+        let householdId = currentHousehold?.id
+        
         return tasks.filter { task in
-            calendar.isDate(task.dueDate, inSameDayAs: date)
+            // First match the date
+            let dateMatches = calendar.isDate(task.dueDate, inSameDayAs: date)
+            
+            // Then check if the task belongs to the current household or has no household
+            let householdMatches = householdId == nil || task.householdId == nil || task.householdId == householdId
+            
+            return dateMatches && householdMatches
         }
     }
     
@@ -569,6 +617,7 @@ class ChoreViewModel: ObservableObject {
         let calendar = Calendar.current
         let today = calendar.startOfDay(for: Date())
         let endDate = calendar.date(byAdding: .day, value: days, to: today) ?? today
+        let householdId = currentHousehold?.id
         
         // Make sure we have enough future instances of repeating tasks
         ensureRepeatingTasksExist(until: endDate)
@@ -576,7 +625,12 @@ class ChoreViewModel: ObservableObject {
         return tasks.filter { task in
             // Filter for tasks that are due after today but before the end date
             let taskDate = calendar.startOfDay(for: task.dueDate)
-            return taskDate >= today && taskDate <= endDate && !task.isCompleted
+            let dateMatches = taskDate >= today && taskDate <= endDate
+            
+            // Filter for tasks in the current household
+            let householdMatches = householdId == nil || task.householdId == nil || task.householdId == householdId
+            
+            return dateMatches && !task.isCompleted && householdMatches
         }.sorted { $0.dueDate < $1.dueDate }
     }
     
@@ -611,7 +665,8 @@ class ChoreViewModel: ObservableObject {
                                 assignedTo: parentTask.assignedTo,
                                 notes: parentTask.notes,
                                 repeatOption: parentTask.repeatOption,
-                                parentTaskId: parentTask.id
+                                parentTaskId: parentTask.id,
+                                householdId: parentTask.householdId
                             )
                             newTasks.append(newTask)
                         }
@@ -647,7 +702,19 @@ class ChoreViewModel: ObservableObject {
     }
     
     private func saveTaskToSupabase(_ task: ChoreTask) async {
-        _ = await supabaseManager.saveTask(task)
+        // Create a temporary copy of the task without the householdId
+        // since the column doesn't exist in the database yet
+        var taskToSave = task
+        
+        // Store the householdId in memory, but don't send it to Supabase yet
+        if taskToSave.householdId == nil, let currentHousehold = currentHousehold {
+            taskToSave.householdId = currentHousehold.id
+            print("Task \(task.id) assigned to household \(currentHousehold.id) in memory only")
+        } else if taskToSave.householdId != nil {
+            print("Task \(task.id) has household \(taskToSave.householdId!) in memory only")
+        }
+        
+        _ = await supabaseManager.saveTask(taskToSave)
     }
     
     private func deleteTaskFromSupabase(_ taskId: UUID) async {
@@ -703,6 +770,14 @@ class ChoreViewModel: ObservableObject {
         return nil
     }
     
+    // Save tasks to UserDefaults for offline use
+    private func saveOfflineTasks() {
+        let defaults = UserDefaults.standard
+        if let tasksData = try? JSONEncoder().encode(tasks) {
+            defaults.set(tasksData, forKey: "offlineTasks")
+        }
+    }
+    
     // Save offline tasks and users to UserDefaults
     func saveOfflineData() {
         let defaults = UserDefaults.standard
@@ -747,5 +822,165 @@ class ChoreViewModel: ObservableObject {
         if let loadedChores = defaults.stringArray(forKey: "offlineCustomChores") {
             customChores = loadedChores
         }
+    }
+    
+    // MARK: - Household Management
+    
+    /// Fetch all households for the current user
+    func fetchHouseholds() async {
+        if let fetchedHouseholds = await supabaseManager.fetchHouseholds() {
+            await MainActor.run {
+                self.households = fetchedHouseholds
+                
+                // If we have households but no current one is set, use the first one
+                if !fetchedHouseholds.isEmpty && currentHousehold == nil {
+                    currentHousehold = fetchedHouseholds.first
+                }
+                
+                print("Fetched \(fetchedHouseholds.count) households")
+            }
+        }
+    }
+    
+    /// Create a new household
+    func createHousehold(name: String) async -> Bool {
+        // Ensure we have the current user and they're authenticated
+        guard let currentUser = currentUser, supabaseManager.isAuthenticated else { return false }
+        
+        print("Creating household '\(name)' for user \(currentUser.id)")
+        
+        let newHousehold = Household(
+            name: name,
+            creatorId: currentUser.id,
+            members: [currentUser.id]
+        )
+        
+        let success = await supabaseManager.createHousehold(newHousehold)
+        
+        if success {
+            // If created successfully, fetch all households to get the server-created one
+            await fetchHouseholds()
+            return true
+        }
+        
+        return false
+    }
+    
+    /// Switch to a specific household
+    func switchToHousehold(_ household: Household) async {
+        // Save previous household ID to detect changes
+        let previousHouseholdId = currentHousehold?.id
+        
+        // Set the current household
+        await MainActor.run {
+            currentHousehold = household
+            
+            // Clear existing tasks first to ensure UI shows loading state
+            if previousHouseholdId != household.id {
+                tasks = []
+            }
+        }
+        
+        print("Switching to household: \(household.name) with ID: \(household.id)")
+        
+        // Fetch all tasks for the user and filter in memory
+        if let allTasks = await supabaseManager.fetchTasks() {
+            await MainActor.run {
+                // Filter tasks for this household only (or tasks with no household)
+                let filteredTasks = allTasks.filter { task in
+                    // Include tasks with no household ID or matching household ID
+                    task.householdId == nil || task.householdId == household.id
+                }
+                
+                self.tasks = filteredTasks
+                print("Loaded \(filteredTasks.count) tasks for household \(household.name)")
+                
+                // Make sure repeating tasks are generated
+                let calendar = Calendar.current
+                let today = calendar.startOfDay(for: Date())
+                let endDate = calendar.date(byAdding: .month, value: 3, to: today) ?? today
+                ensureRepeatingTasksExist(until: endDate)
+            }
+        }
+        
+        // Save household selection to UserDefaults
+        UserDefaults.standard.set(true, forKey: "hasSelectedHousehold")
+        
+        // Update UI with the appropriate household members
+        await loadMembersForCurrentHousehold()
+    }
+    
+    /// Load members for the current household
+    private func loadMembersForCurrentHousehold() async {
+        guard let currentHousehold = currentHousehold else { return }
+        
+        // Fetch all users first
+        if let allUsers = await supabaseManager.fetchUsers() {
+            await MainActor.run {
+                // Convert household members array to a Set for faster lookup
+                let memberIds = Set(currentHousehold.members.map { $0.uuidString.lowercased() })
+                
+                // Update users list with only household members and the current user
+                users = allUsers.filter { user in
+                    memberIds.contains(user.id.uuidString.lowercased()) || 
+                    (currentUser != nil && user.id == currentUser!.id)
+                }
+                
+                print("Loaded \(users.count) members for household \(currentHousehold.name)")
+            }
+        }
+    }
+    
+    /// Add a user to a household
+    func addUserToHousehold(userId: UUID, householdId: UUID) async -> Bool {
+        return await supabaseManager.addUserToHousehold(userId: userId, householdId: householdId)
+    }
+    
+    /// Check if the user has any households
+    func hasHouseholds() -> Bool {
+        return !households.isEmpty
+    }
+    
+    /// Create a default household from existing data (for migration)
+    func createDefaultHouseholdFromExistingData() async -> Bool {
+        guard let currentUser = currentUser, !tasks.isEmpty else { return false }
+        
+        let defaultName = "My Home"
+        let newHousehold = Household(
+            name: defaultName,
+            creatorId: currentUser.id,
+            members: [currentUser.id]
+        )
+        
+        let success = await supabaseManager.createHousehold(newHousehold)
+        
+        if success {
+            // If created successfully, fetch all households to get the server-created one
+            await fetchHouseholds()
+            
+            // If we have a household now, associate existing tasks with it
+            if let firstHousehold = households.first {
+                // Update local tasks with household ID
+                for i in 0..<tasks.count {
+                    if tasks[i].householdId == nil {
+                        tasks[i].householdId = firstHousehold.id
+                        
+                        // Also update in the database if authenticated
+                        if supabaseManager.isAuthenticated && !isOfflineMode {
+                            Task {
+                                _ = await supabaseManager.updateTask(tasks[i])
+                            }
+                        }
+                    }
+                }
+                
+                // Switch to the new household to load everything properly
+                await switchToHousehold(firstHousehold)
+            }
+            
+            return true
+        }
+        
+        return false
     }
 } 

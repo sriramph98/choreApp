@@ -1,0 +1,208 @@
+{
+  "" : {
+    "diagnostics" : "/Users/sriram/choreApp/build/Homie.build/Debug-iphoneos/Homie.build/Objects-normal/arm64/Homie-master.dia",
+    "emit-module-dependencies" : "/Users/sriram/choreApp/build/Homie.build/Debug-iphoneos/Homie.build/Objects-normal/arm64/Homie-master-emit-module.d",
+    "emit-module-diagnostics" : "/Users/sriram/choreApp/build/Homie.build/Debug-iphoneos/Homie.build/Objects-normal/arm64/Homie-master-emit-module.dia",
+    "swift-dependencies" : "/Users/sriram/choreApp/build/Homie.build/Debug-iphoneos/Homie.build/Objects-normal/arm64/Homie-master.swiftdeps"
+  },
+  "/Users/sriram/choreApp/Homie/Authentication/BiometricAuthHelper.swift" : {
+    "const-values" : "/Users/sriram/choreApp/build/Homie.build/Debug-iphoneos/Homie.build/Objects-normal/arm64/BiometricAuthHelper.swiftconstvalues",
+    "dependencies" : "/Users/sriram/choreApp/build/Homie.build/Debug-iphoneos/Homie.build/Objects-normal/arm64/BiometricAuthHelper.d",
+    "diagnostics" : "/Users/sriram/choreApp/build/Homie.build/Debug-iphoneos/Homie.build/Objects-normal/arm64/BiometricAuthHelper.dia",
+    "index-unit-output-path" : "/Homie.build/Debug-iphoneos/Homie.build/Objects-normal/arm64/BiometricAuthHelper.o",
+    "llvm-bc" : "/Users/sriram/choreApp/build/Homie.build/Debug-iphoneos/Homie.build/Objects-normal/arm64/BiometricAuthHelper.bc",
+    "object" : "/Users/sriram/choreApp/build/Homie.build/Debug-iphoneos/Homie.build/Objects-normal/arm64/BiometricAuthHelper.o",
+    "swift-dependencies" : "/Users/sriram/choreApp/build/Homie.build/Debug-iphoneos/Homie.build/Objects-normal/arm64/BiometricAuthHelper.swiftdeps",
+    "swiftmodule" : "/Users/sriram/choreApp/build/Homie.build/Debug-iphoneos/Homie.build/Objects-normal/arm64/BiometricAuthHelper~partial.swiftmodule"
+  },
+  "/Users/sriram/choreApp/Homie/ContentView.swift" : {
+    "const-values" : "/Users/sriram/choreApp/build/Homie.build/Debug-iphoneos/Homie.build/Objects-normal/arm64/ContentView.swiftconstvalues",
+    "dependencies" : "/Users/sriram/choreApp/build/Homie.build/Debug-iphoneos/Homie.build/Objects-normal/arm64/ContentView.d",
+    "diagnostics" : "/Users/sriram/choreApp/build/Homie.build/Debug-iphoneos/Homie.build/Objects-normal/arm64/ContentView.dia",
+    "index-unit-output-path" : "/Homie.build/Debug-iphoneos/Homie.build/Objects-normal/arm64/ContentView.o",
+    "llvm-bc" : "/Users/sriram/choreApp/build/Homie.build/Debug-iphoneos/Homie.build/Objects-normal/arm64/ContentView.bc",
+    "object" : "/Users/sriram/choreApp/build/Homie.build/Debug-iphoneos/Homie.build/Objects-normal/arm64/ContentView.o",
+    "swift-dependencies" : "/Users/sriram/choreApp/build/Homie.build/Debug-iphoneos/Homie.build/Objects-normal/arm64/ContentView.swiftdeps",
+    "swiftmodule" : "/Users/sriram/choreApp/build/Homie.build/Debug-iphoneos/Homie.build/Objects-normal/arm64/ContentView~partial.swiftmodule"
+  },
+  "/Users/sriram/choreApp/Homie/HomieApp.swift" : {
+    "const-values" : "/Users/sriram/choreApp/build/Homie.build/Debug-iphoneos/Homie.build/Objects-normal/arm64/HomieApp.swiftconstvalues",
+    "dependencies" : "/Users/sriram/choreApp/build/Homie.build/Debug-iphoneos/Homie.build/Objects-normal/arm64/HomieApp.d",
+    "diagnostics" : "/Users/sriram/choreApp/build/Homie.build/Debug-iphoneos/Homie.build/Objects-normal/arm64/HomieApp.dia",
+    "index-unit-output-path" : "/Homie.build/Debug-iphoneos/Homie.build/Objects-normal/arm64/HomieApp.o",
+    "llvm-bc" : "/Users/sriram/choreApp/build/Homie.build/Debug-iphoneos/Homie.build/Objects-normal/arm64/HomieApp.bc",
+    "object" : "/Users/sriram/choreApp/build/Homie.build/Debug-iphoneos/Homie.build/Objects-normal/arm64/HomieApp.o",
+    "swift-dependencies" : "/Users/sriram/choreApp/build/Homie.build/Debug-iphoneos/Homie.build/Objects-normal/arm64/HomieApp.swiftdeps",
+    "swiftmodule" : "/Users/sriram/choreApp/build/Homie.build/Debug-iphoneos/Homie.build/Objects-normal/arm64/HomieApp~partial.swiftmodule"
+  },
+  "/Users/sriram/choreApp/Homie/Models/AppColors.swift" : {
+    "const-values" : "/Users/sriram/choreApp/build/Homie.build/Debug-iphoneos/Homie.build/Objects-normal/arm64/AppColors.swiftconstvalues",
+    "dependencies" : "/Users/sriram/choreApp/build/Homie.build/Debug-iphoneos/Homie.build/Objects-normal/arm64/AppColors.d",
+    "diagnostics" : "/Users/sriram/choreApp/build/Homie.build/Debug-iphoneos/Homie.build/Objects-normal/arm64/AppColors.dia",
+    "index-unit-output-path" : "/Homie.build/Debug-iphoneos/Homie.build/Objects-normal/arm64/AppColors.o",
+    "llvm-bc" : "/Users/sriram/choreApp/build/Homie.build/Debug-iphoneos/Homie.build/Objects-normal/arm64/AppColors.bc",
+    "object" : "/Users/sriram/choreApp/build/Homie.build/Debug-iphoneos/Homie.build/Objects-normal/arm64/AppColors.o",
+    "swift-dependencies" : "/Users/sriram/choreApp/build/Homie.build/Debug-iphoneos/Homie.build/Objects-normal/arm64/AppColors.swiftdeps",
+    "swiftmodule" : "/Users/sriram/choreApp/build/Homie.build/Debug-iphoneos/Homie.build/Objects-normal/arm64/AppColors~partial.swiftmodule"
+  },
+  "/Users/sriram/choreApp/Homie/Models/Chore.swift" : {
+    "const-values" : "/Users/sriram/choreApp/build/Homie.build/Debug-iphoneos/Homie.build/Objects-normal/arm64/Chore.swiftconstvalues",
+    "dependencies" : "/Users/sriram/choreApp/build/Homie.build/Debug-iphoneos/Homie.build/Objects-normal/arm64/Chore.d",
+    "diagnostics" : "/Users/sriram/choreApp/build/Homie.build/Debug-iphoneos/Homie.build/Objects-normal/arm64/Chore.dia",
+    "index-unit-output-path" : "/Homie.build/Debug-iphoneos/Homie.build/Objects-normal/arm64/Chore.o",
+    "llvm-bc" : "/Users/sriram/choreApp/build/Homie.build/Debug-iphoneos/Homie.build/Objects-normal/arm64/Chore.bc",
+    "object" : "/Users/sriram/choreApp/build/Homie.build/Debug-iphoneos/Homie.build/Objects-normal/arm64/Chore.o",
+    "swift-dependencies" : "/Users/sriram/choreApp/build/Homie.build/Debug-iphoneos/Homie.build/Objects-normal/arm64/Chore.swiftdeps",
+    "swiftmodule" : "/Users/sriram/choreApp/build/Homie.build/Debug-iphoneos/Homie.build/Objects-normal/arm64/Chore~partial.swiftmodule"
+  },
+  "/Users/sriram/choreApp/Homie/Models/User.swift" : {
+    "const-values" : "/Users/sriram/choreApp/build/Homie.build/Debug-iphoneos/Homie.build/Objects-normal/arm64/User.swiftconstvalues",
+    "dependencies" : "/Users/sriram/choreApp/build/Homie.build/Debug-iphoneos/Homie.build/Objects-normal/arm64/User.d",
+    "diagnostics" : "/Users/sriram/choreApp/build/Homie.build/Debug-iphoneos/Homie.build/Objects-normal/arm64/User.dia",
+    "index-unit-output-path" : "/Homie.build/Debug-iphoneos/Homie.build/Objects-normal/arm64/User.o",
+    "llvm-bc" : "/Users/sriram/choreApp/build/Homie.build/Debug-iphoneos/Homie.build/Objects-normal/arm64/User.bc",
+    "object" : "/Users/sriram/choreApp/build/Homie.build/Debug-iphoneos/Homie.build/Objects-normal/arm64/User.o",
+    "swift-dependencies" : "/Users/sriram/choreApp/build/Homie.build/Debug-iphoneos/Homie.build/Objects-normal/arm64/User.swiftdeps",
+    "swiftmodule" : "/Users/sriram/choreApp/build/Homie.build/Debug-iphoneos/Homie.build/Objects-normal/arm64/User~partial.swiftmodule"
+  },
+  "/Users/sriram/choreApp/Homie/Services/SupabaseManager.swift" : {
+    "const-values" : "/Users/sriram/choreApp/build/Homie.build/Debug-iphoneos/Homie.build/Objects-normal/arm64/SupabaseManager.swiftconstvalues",
+    "dependencies" : "/Users/sriram/choreApp/build/Homie.build/Debug-iphoneos/Homie.build/Objects-normal/arm64/SupabaseManager.d",
+    "diagnostics" : "/Users/sriram/choreApp/build/Homie.build/Debug-iphoneos/Homie.build/Objects-normal/arm64/SupabaseManager.dia",
+    "index-unit-output-path" : "/Homie.build/Debug-iphoneos/Homie.build/Objects-normal/arm64/SupabaseManager.o",
+    "llvm-bc" : "/Users/sriram/choreApp/build/Homie.build/Debug-iphoneos/Homie.build/Objects-normal/arm64/SupabaseManager.bc",
+    "object" : "/Users/sriram/choreApp/build/Homie.build/Debug-iphoneos/Homie.build/Objects-normal/arm64/SupabaseManager.o",
+    "swift-dependencies" : "/Users/sriram/choreApp/build/Homie.build/Debug-iphoneos/Homie.build/Objects-normal/arm64/SupabaseManager.swiftdeps",
+    "swiftmodule" : "/Users/sriram/choreApp/build/Homie.build/Debug-iphoneos/Homie.build/Objects-normal/arm64/SupabaseManager~partial.swiftmodule"
+  },
+  "/Users/sriram/choreApp/Homie/ViewModels/ChoreViewModel.swift" : {
+    "const-values" : "/Users/sriram/choreApp/build/Homie.build/Debug-iphoneos/Homie.build/Objects-normal/arm64/ChoreViewModel.swiftconstvalues",
+    "dependencies" : "/Users/sriram/choreApp/build/Homie.build/Debug-iphoneos/Homie.build/Objects-normal/arm64/ChoreViewModel.d",
+    "diagnostics" : "/Users/sriram/choreApp/build/Homie.build/Debug-iphoneos/Homie.build/Objects-normal/arm64/ChoreViewModel.dia",
+    "index-unit-output-path" : "/Homie.build/Debug-iphoneos/Homie.build/Objects-normal/arm64/ChoreViewModel.o",
+    "llvm-bc" : "/Users/sriram/choreApp/build/Homie.build/Debug-iphoneos/Homie.build/Objects-normal/arm64/ChoreViewModel.bc",
+    "object" : "/Users/sriram/choreApp/build/Homie.build/Debug-iphoneos/Homie.build/Objects-normal/arm64/ChoreViewModel.o",
+    "swift-dependencies" : "/Users/sriram/choreApp/build/Homie.build/Debug-iphoneos/Homie.build/Objects-normal/arm64/ChoreViewModel.swiftdeps",
+    "swiftmodule" : "/Users/sriram/choreApp/build/Homie.build/Debug-iphoneos/Homie.build/Objects-normal/arm64/ChoreViewModel~partial.swiftmodule"
+  },
+  "/Users/sriram/choreApp/Homie/Views/ChatView.swift" : {
+    "const-values" : "/Users/sriram/choreApp/build/Homie.build/Debug-iphoneos/Homie.build/Objects-normal/arm64/ChatView.swiftconstvalues",
+    "dependencies" : "/Users/sriram/choreApp/build/Homie.build/Debug-iphoneos/Homie.build/Objects-normal/arm64/ChatView.d",
+    "diagnostics" : "/Users/sriram/choreApp/build/Homie.build/Debug-iphoneos/Homie.build/Objects-normal/arm64/ChatView.dia",
+    "index-unit-output-path" : "/Homie.build/Debug-iphoneos/Homie.build/Objects-normal/arm64/ChatView.o",
+    "llvm-bc" : "/Users/sriram/choreApp/build/Homie.build/Debug-iphoneos/Homie.build/Objects-normal/arm64/ChatView.bc",
+    "object" : "/Users/sriram/choreApp/build/Homie.build/Debug-iphoneos/Homie.build/Objects-normal/arm64/ChatView.o",
+    "swift-dependencies" : "/Users/sriram/choreApp/build/Homie.build/Debug-iphoneos/Homie.build/Objects-normal/arm64/ChatView.swiftdeps",
+    "swiftmodule" : "/Users/sriram/choreApp/build/Homie.build/Debug-iphoneos/Homie.build/Objects-normal/arm64/ChatView~partial.swiftmodule"
+  },
+  "/Users/sriram/choreApp/Homie/Views/ChoreCalendarView.swift" : {
+    "const-values" : "/Users/sriram/choreApp/build/Homie.build/Debug-iphoneos/Homie.build/Objects-normal/arm64/ChoreCalendarView.swiftconstvalues",
+    "dependencies" : "/Users/sriram/choreApp/build/Homie.build/Debug-iphoneos/Homie.build/Objects-normal/arm64/ChoreCalendarView.d",
+    "diagnostics" : "/Users/sriram/choreApp/build/Homie.build/Debug-iphoneos/Homie.build/Objects-normal/arm64/ChoreCalendarView.dia",
+    "index-unit-output-path" : "/Homie.build/Debug-iphoneos/Homie.build/Objects-normal/arm64/ChoreCalendarView.o",
+    "llvm-bc" : "/Users/sriram/choreApp/build/Homie.build/Debug-iphoneos/Homie.build/Objects-normal/arm64/ChoreCalendarView.bc",
+    "object" : "/Users/sriram/choreApp/build/Homie.build/Debug-iphoneos/Homie.build/Objects-normal/arm64/ChoreCalendarView.o",
+    "swift-dependencies" : "/Users/sriram/choreApp/build/Homie.build/Debug-iphoneos/Homie.build/Objects-normal/arm64/ChoreCalendarView.swiftdeps",
+    "swiftmodule" : "/Users/sriram/choreApp/build/Homie.build/Debug-iphoneos/Homie.build/Objects-normal/arm64/ChoreCalendarView~partial.swiftmodule"
+  },
+  "/Users/sriram/choreApp/Homie/Views/ChoreFormView.swift" : {
+    "const-values" : "/Users/sriram/choreApp/build/Homie.build/Debug-iphoneos/Homie.build/Objects-normal/arm64/ChoreFormView.swiftconstvalues",
+    "dependencies" : "/Users/sriram/choreApp/build/Homie.build/Debug-iphoneos/Homie.build/Objects-normal/arm64/ChoreFormView.d",
+    "diagnostics" : "/Users/sriram/choreApp/build/Homie.build/Debug-iphoneos/Homie.build/Objects-normal/arm64/ChoreFormView.dia",
+    "index-unit-output-path" : "/Homie.build/Debug-iphoneos/Homie.build/Objects-normal/arm64/ChoreFormView.o",
+    "llvm-bc" : "/Users/sriram/choreApp/build/Homie.build/Debug-iphoneos/Homie.build/Objects-normal/arm64/ChoreFormView.bc",
+    "object" : "/Users/sriram/choreApp/build/Homie.build/Debug-iphoneos/Homie.build/Objects-normal/arm64/ChoreFormView.o",
+    "swift-dependencies" : "/Users/sriram/choreApp/build/Homie.build/Debug-iphoneos/Homie.build/Objects-normal/arm64/ChoreFormView.swiftdeps",
+    "swiftmodule" : "/Users/sriram/choreApp/build/Homie.build/Debug-iphoneos/Homie.build/Objects-normal/arm64/ChoreFormView~partial.swiftmodule"
+  },
+  "/Users/sriram/choreApp/Homie/Views/CustomButtons.swift" : {
+    "const-values" : "/Users/sriram/choreApp/build/Homie.build/Debug-iphoneos/Homie.build/Objects-normal/arm64/CustomButtons.swiftconstvalues",
+    "dependencies" : "/Users/sriram/choreApp/build/Homie.build/Debug-iphoneos/Homie.build/Objects-normal/arm64/CustomButtons.d",
+    "diagnostics" : "/Users/sriram/choreApp/build/Homie.build/Debug-iphoneos/Homie.build/Objects-normal/arm64/CustomButtons.dia",
+    "index-unit-output-path" : "/Homie.build/Debug-iphoneos/Homie.build/Objects-normal/arm64/CustomButtons.o",
+    "llvm-bc" : "/Users/sriram/choreApp/build/Homie.build/Debug-iphoneos/Homie.build/Objects-normal/arm64/CustomButtons.bc",
+    "object" : "/Users/sriram/choreApp/build/Homie.build/Debug-iphoneos/Homie.build/Objects-normal/arm64/CustomButtons.o",
+    "swift-dependencies" : "/Users/sriram/choreApp/build/Homie.build/Debug-iphoneos/Homie.build/Objects-normal/arm64/CustomButtons.swiftdeps",
+    "swiftmodule" : "/Users/sriram/choreApp/build/Homie.build/Debug-iphoneos/Homie.build/Objects-normal/arm64/CustomButtons~partial.swiftmodule"
+  },
+  "/Users/sriram/choreApp/Homie/Views/HomeView.swift" : {
+    "const-values" : "/Users/sriram/choreApp/build/Homie.build/Debug-iphoneos/Homie.build/Objects-normal/arm64/HomeView.swiftconstvalues",
+    "dependencies" : "/Users/sriram/choreApp/build/Homie.build/Debug-iphoneos/Homie.build/Objects-normal/arm64/HomeView.d",
+    "diagnostics" : "/Users/sriram/choreApp/build/Homie.build/Debug-iphoneos/Homie.build/Objects-normal/arm64/HomeView.dia",
+    "index-unit-output-path" : "/Homie.build/Debug-iphoneos/Homie.build/Objects-normal/arm64/HomeView.o",
+    "llvm-bc" : "/Users/sriram/choreApp/build/Homie.build/Debug-iphoneos/Homie.build/Objects-normal/arm64/HomeView.bc",
+    "object" : "/Users/sriram/choreApp/build/Homie.build/Debug-iphoneos/Homie.build/Objects-normal/arm64/HomeView.o",
+    "swift-dependencies" : "/Users/sriram/choreApp/build/Homie.build/Debug-iphoneos/Homie.build/Objects-normal/arm64/HomeView.swiftdeps",
+    "swiftmodule" : "/Users/sriram/choreApp/build/Homie.build/Debug-iphoneos/Homie.build/Objects-normal/arm64/HomeView~partial.swiftmodule"
+  },
+  "/Users/sriram/choreApp/Homie/Views/HouseholdView.swift" : {
+    "const-values" : "/Users/sriram/choreApp/build/Homie.build/Debug-iphoneos/Homie.build/Objects-normal/arm64/HouseholdView.swiftconstvalues",
+    "dependencies" : "/Users/sriram/choreApp/build/Homie.build/Debug-iphoneos/Homie.build/Objects-normal/arm64/HouseholdView.d",
+    "diagnostics" : "/Users/sriram/choreApp/build/Homie.build/Debug-iphoneos/Homie.build/Objects-normal/arm64/HouseholdView.dia",
+    "index-unit-output-path" : "/Homie.build/Debug-iphoneos/Homie.build/Objects-normal/arm64/HouseholdView.o",
+    "llvm-bc" : "/Users/sriram/choreApp/build/Homie.build/Debug-iphoneos/Homie.build/Objects-normal/arm64/HouseholdView.bc",
+    "object" : "/Users/sriram/choreApp/build/Homie.build/Debug-iphoneos/Homie.build/Objects-normal/arm64/HouseholdView.o",
+    "swift-dependencies" : "/Users/sriram/choreApp/build/Homie.build/Debug-iphoneos/Homie.build/Objects-normal/arm64/HouseholdView.swiftdeps",
+    "swiftmodule" : "/Users/sriram/choreApp/build/Homie.build/Debug-iphoneos/Homie.build/Objects-normal/arm64/HouseholdView~partial.swiftmodule"
+  },
+  "/Users/sriram/choreApp/Homie/Views/LoginView.swift" : {
+    "const-values" : "/Users/sriram/choreApp/build/Homie.build/Debug-iphoneos/Homie.build/Objects-normal/arm64/LoginView.swiftconstvalues",
+    "dependencies" : "/Users/sriram/choreApp/build/Homie.build/Debug-iphoneos/Homie.build/Objects-normal/arm64/LoginView.d",
+    "diagnostics" : "/Users/sriram/choreApp/build/Homie.build/Debug-iphoneos/Homie.build/Objects-normal/arm64/LoginView.dia",
+    "index-unit-output-path" : "/Homie.build/Debug-iphoneos/Homie.build/Objects-normal/arm64/LoginView.o",
+    "llvm-bc" : "/Users/sriram/choreApp/build/Homie.build/Debug-iphoneos/Homie.build/Objects-normal/arm64/LoginView.bc",
+    "object" : "/Users/sriram/choreApp/build/Homie.build/Debug-iphoneos/Homie.build/Objects-normal/arm64/LoginView.o",
+    "swift-dependencies" : "/Users/sriram/choreApp/build/Homie.build/Debug-iphoneos/Homie.build/Objects-normal/arm64/LoginView.swiftdeps",
+    "swiftmodule" : "/Users/sriram/choreApp/build/Homie.build/Debug-iphoneos/Homie.build/Objects-normal/arm64/LoginView~partial.swiftmodule"
+  },
+  "/Users/sriram/choreApp/Homie/Views/OnboardingView.swift" : {
+    "const-values" : "/Users/sriram/choreApp/build/Homie.build/Debug-iphoneos/Homie.build/Objects-normal/arm64/OnboardingView.swiftconstvalues",
+    "dependencies" : "/Users/sriram/choreApp/build/Homie.build/Debug-iphoneos/Homie.build/Objects-normal/arm64/OnboardingView.d",
+    "diagnostics" : "/Users/sriram/choreApp/build/Homie.build/Debug-iphoneos/Homie.build/Objects-normal/arm64/OnboardingView.dia",
+    "index-unit-output-path" : "/Homie.build/Debug-iphoneos/Homie.build/Objects-normal/arm64/OnboardingView.o",
+    "llvm-bc" : "/Users/sriram/choreApp/build/Homie.build/Debug-iphoneos/Homie.build/Objects-normal/arm64/OnboardingView.bc",
+    "object" : "/Users/sriram/choreApp/build/Homie.build/Debug-iphoneos/Homie.build/Objects-normal/arm64/OnboardingView.o",
+    "swift-dependencies" : "/Users/sriram/choreApp/build/Homie.build/Debug-iphoneos/Homie.build/Objects-normal/arm64/OnboardingView.swiftdeps",
+    "swiftmodule" : "/Users/sriram/choreApp/build/Homie.build/Debug-iphoneos/Homie.build/Objects-normal/arm64/OnboardingView~partial.swiftmodule"
+  },
+  "/Users/sriram/choreApp/Homie/Views/ProfileView.swift" : {
+    "const-values" : "/Users/sriram/choreApp/build/Homie.build/Debug-iphoneos/Homie.build/Objects-normal/arm64/ProfileView.swiftconstvalues",
+    "dependencies" : "/Users/sriram/choreApp/build/Homie.build/Debug-iphoneos/Homie.build/Objects-normal/arm64/ProfileView.d",
+    "diagnostics" : "/Users/sriram/choreApp/build/Homie.build/Debug-iphoneos/Homie.build/Objects-normal/arm64/ProfileView.dia",
+    "index-unit-output-path" : "/Homie.build/Debug-iphoneos/Homie.build/Objects-normal/arm64/ProfileView.o",
+    "llvm-bc" : "/Users/sriram/choreApp/build/Homie.build/Debug-iphoneos/Homie.build/Objects-normal/arm64/ProfileView.bc",
+    "object" : "/Users/sriram/choreApp/build/Homie.build/Debug-iphoneos/Homie.build/Objects-normal/arm64/ProfileView.o",
+    "swift-dependencies" : "/Users/sriram/choreApp/build/Homie.build/Debug-iphoneos/Homie.build/Objects-normal/arm64/ProfileView.swiftdeps",
+    "swiftmodule" : "/Users/sriram/choreApp/build/Homie.build/Debug-iphoneos/Homie.build/Objects-normal/arm64/ProfileView~partial.swiftmodule"
+  },
+  "/Users/sriram/choreApp/Homie/Views/TasksView.swift" : {
+    "const-values" : "/Users/sriram/choreApp/build/Homie.build/Debug-iphoneos/Homie.build/Objects-normal/arm64/TasksView.swiftconstvalues",
+    "dependencies" : "/Users/sriram/choreApp/build/Homie.build/Debug-iphoneos/Homie.build/Objects-normal/arm64/TasksView.d",
+    "diagnostics" : "/Users/sriram/choreApp/build/Homie.build/Debug-iphoneos/Homie.build/Objects-normal/arm64/TasksView.dia",
+    "index-unit-output-path" : "/Homie.build/Debug-iphoneos/Homie.build/Objects-normal/arm64/TasksView.o",
+    "llvm-bc" : "/Users/sriram/choreApp/build/Homie.build/Debug-iphoneos/Homie.build/Objects-normal/arm64/TasksView.bc",
+    "object" : "/Users/sriram/choreApp/build/Homie.build/Debug-iphoneos/Homie.build/Objects-normal/arm64/TasksView.o",
+    "swift-dependencies" : "/Users/sriram/choreApp/build/Homie.build/Debug-iphoneos/Homie.build/Objects-normal/arm64/TasksView.swiftdeps",
+    "swiftmodule" : "/Users/sriram/choreApp/build/Homie.build/Debug-iphoneos/Homie.build/Objects-normal/arm64/TasksView~partial.swiftmodule"
+  },
+  "/Users/sriram/choreApp/Homie/Views/UserManagementView.swift" : {
+    "const-values" : "/Users/sriram/choreApp/build/Homie.build/Debug-iphoneos/Homie.build/Objects-normal/arm64/UserManagementView.swiftconstvalues",
+    "dependencies" : "/Users/sriram/choreApp/build/Homie.build/Debug-iphoneos/Homie.build/Objects-normal/arm64/UserManagementView.d",
+    "diagnostics" : "/Users/sriram/choreApp/build/Homie.build/Debug-iphoneos/Homie.build/Objects-normal/arm64/UserManagementView.dia",
+    "index-unit-output-path" : "/Homie.build/Debug-iphoneos/Homie.build/Objects-normal/arm64/UserManagementView.o",
+    "llvm-bc" : "/Users/sriram/choreApp/build/Homie.build/Debug-iphoneos/Homie.build/Objects-normal/arm64/UserManagementView.bc",
+    "object" : "/Users/sriram/choreApp/build/Homie.build/Debug-iphoneos/Homie.build/Objects-normal/arm64/UserManagementView.o",
+    "swift-dependencies" : "/Users/sriram/choreApp/build/Homie.build/Debug-iphoneos/Homie.build/Objects-normal/arm64/UserManagementView.swiftdeps",
+    "swiftmodule" : "/Users/sriram/choreApp/build/Homie.build/Debug-iphoneos/Homie.build/Objects-normal/arm64/UserManagementView~partial.swiftmodule"
+  },
+  "/Users/sriram/choreApp/build/Homie.build/Debug-iphoneos/Homie.build/DerivedSources/GeneratedAssetSymbols.swift" : {
+    "const-values" : "/Users/sriram/choreApp/build/Homie.build/Debug-iphoneos/Homie.build/Objects-normal/arm64/GeneratedAssetSymbols.swiftconstvalues",
+    "dependencies" : "/Users/sriram/choreApp/build/Homie.build/Debug-iphoneos/Homie.build/Objects-normal/arm64/GeneratedAssetSymbols.d",
+    "diagnostics" : "/Users/sriram/choreApp/build/Homie.build/Debug-iphoneos/Homie.build/Objects-normal/arm64/GeneratedAssetSymbols.dia",
+    "index-unit-output-path" : "/Homie.build/Debug-iphoneos/Homie.build/Objects-normal/arm64/GeneratedAssetSymbols.o",
+    "llvm-bc" : "/Users/sriram/choreApp/build/Homie.build/Debug-iphoneos/Homie.build/Objects-normal/arm64/GeneratedAssetSymbols.bc",
+    "object" : "/Users/sriram/choreApp/build/Homie.build/Debug-iphoneos/Homie.build/Objects-normal/arm64/GeneratedAssetSymbols.o",
+    "swift-dependencies" : "/Users/sriram/choreApp/build/Homie.build/Debug-iphoneos/Homie.build/Objects-normal/arm64/GeneratedAssetSymbols.swiftdeps",
+    "swiftmodule" : "/Users/sriram/choreApp/build/Homie.build/Debug-iphoneos/Homie.build/Objects-normal/arm64/GeneratedAssetSymbols~partial.swiftmodule"
+  }
+}
