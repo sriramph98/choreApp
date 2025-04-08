@@ -301,12 +301,13 @@ class SupabaseManager: ObservableObject {
             // Start building the query
             let query = client.from("tasks").select()
             
-            // Filter by user ID - we don't filter by household ID yet since the column doesn't exist
+            // Filter by user ID
             let finalQuery = query.eq("userid", value: stringUserId)
             
-            // Log if we're trying to filter by household ID (but can't)
+            // Note that we're not filtering by household ID in the database query
+            // since the column doesn't exist yet
             if householdId != nil {
-                print("Note: Ignoring household filter because householdid column doesn't exist in database yet")
+                print("Note: Ignoring household filter in database query because householdid column doesn't exist yet")
             }
             
             let response = try await finalQuery
@@ -329,6 +330,7 @@ class SupabaseManager: ObservableObject {
                 "repeatoption": "repeatOption",
                 "parenttaskid": "parentTaskId",
                 "createdat": "createdAt"
+                // Note: householdid not included since it doesn't exist in the database yet
             ]
             
             let tasks = try decode(data: data, keyMapping: customKeyMapping, as: [TaskModel].self)
@@ -361,7 +363,9 @@ class SupabaseManager: ObservableObject {
                     parentTaskId = UUID(uuidString: parentIdStr)
                 }
                 
-                // Setting householdId to the requested one since the database doesn't have this column yet
+                // Use the passed household ID as the task's household ID
+                // This ensures that even though the database doesn't have the column,
+                // the app can still filter tasks by household
                 return ChoreViewModel.ChoreTask(
                     id: taskId,
                     name: task.name,
@@ -371,14 +375,13 @@ class SupabaseManager: ObservableObject {
                     notes: notes,
                     repeatOption: repeatOption,
                     parentTaskId: parentTaskId,
-                    householdId: householdId // Use the passed household ID until database schema is updated
+                    householdId: householdId // Using the passed household ID
                 )
             }
             
-            // If a household ID was provided, filter the tasks in memory
+            // If a household ID was provided, all tasks are assigned that household ID
             if let householdId = householdId {
-                print("Filtering \(choreTasks.count) tasks for household \(householdId) in memory")
-                return choreTasks
+                print("Assigned household ID \(householdId) to \(choreTasks.count) tasks in memory")
             }
             
             return choreTasks
@@ -892,6 +895,22 @@ class SupabaseManager: ObservableObject {
             print("Error adding user to household: \(error)")
             return false
         }
+    }
+    
+    func fetchTasksForHousehold(householdId: UUID) async -> [ChoreViewModel.ChoreTask]? {
+        // Use the updated fetchTasks method with a specific household ID
+        guard let allTasks = await fetchTasks() else {
+            return nil
+        }
+        
+        // Apply strict filtering to ensure only tasks from this household are returned
+        let householdTasks = allTasks.filter { task in
+            task.householdId == householdId
+        }
+        
+        print("Filtered \(allTasks.count) tasks down to \(householdTasks.count) tasks for household \(householdId.uuidString)")
+        
+        return householdTasks
     }
 }
 

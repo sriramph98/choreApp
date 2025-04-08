@@ -94,6 +94,22 @@ struct HomeView: View {
             // Re-fetch tasks with current household filter
             if let currentHousehold = choreViewModel.currentHousehold {
                 print("Refreshing data for household: \(currentHousehold.name)")
+                
+                // First clear all existing tasks to avoid showing stale data
+                await MainActor.run {
+                    choreViewModel.tasks = []
+                }
+                
+                // Fetch fresh data
+                await choreViewModel.loadTasksForCurrentUser()
+                
+                // Ensure all tasks have the correct household ID
+                await MainActor.run {
+                    choreViewModel.ensureTasksHaveHouseholdIds()
+                }
+                
+                // Refresh the task list with a short delay to ensure UI updates
+                try? await Task.sleep(nanoseconds: 300_000_000) // 0.3 seconds
                 await choreViewModel.loadTasksForCurrentUser()
             }
         }

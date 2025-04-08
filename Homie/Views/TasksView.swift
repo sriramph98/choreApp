@@ -130,6 +130,11 @@ struct TasksView: View {
         // If online and we have a current user, load tasks
         if choreViewModel.currentUser != nil {
             await choreViewModel.loadTasksForCurrentUser()
+            
+            // Make sure all tasks have household IDs
+            await MainActor.run {
+                choreViewModel.ensureTasksHaveHouseholdIds()
+            }
         }
         
         // After refresh completes, update UI

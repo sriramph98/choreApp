@@ -5,6 +5,7 @@ struct HouseholdListView: View {
     @State private var showingAddHouseholdSheet = false
     @State private var isLoading = false
     @AppStorage("hasSelectedHousehold") private var hasSelectedHousehold = false
+    @Environment(\.dismiss) private var dismiss
     
     var body: some View {
         NavigationStack {
@@ -22,9 +23,20 @@ struct HouseholdListView: View {
                                         // Handle selection
                                         Task {
                                             isLoading = true
+                                            
+                                            // First, clear tasks to avoid showing previous household's tasks
+                                            await MainActor.run {
+                                                choreViewModel.tasks = []
+                                            }
+                                            
+                                            // Then switch to the new household
                                             await choreViewModel.switchToHousehold(household)
-                                            isLoading = false
-                                            hasSelectedHousehold = true
+                                            
+                                            await MainActor.run {
+                                                isLoading = false
+                                                hasSelectedHousehold = true
+                                                dismiss() // Dismiss the sheet
+                                            }
                                         }
                                     }
                                 }
@@ -49,7 +61,9 @@ struct HouseholdListView: View {
                 CreateHouseholdView(isPresented: $showingAddHouseholdSheet)
             }
             .onAppear {
+                // Always reload all data to ensure task counts are accurate
                 loadHouseholds()
+                refreshTaskCounts()
             }
         }
     }
@@ -68,9 +82,18 @@ struct HouseholdListView: View {
             isLoading = false
         }
     }
+    
+    private func refreshTaskCounts() {
+        Task {
+            // Fetch all tasks for the current user using ChoreViewModel's public method
+            // instead of accessing private supabaseManager directly
+            await choreViewModel.loadTasksForCurrentUser()
+        }
+    }
 }
 
 struct HouseholdCard: View {
+    @EnvironmentObject var choreViewModel: ChoreViewModel
     let household: Household
     let onTap: () -> Void
     
@@ -82,13 +105,25 @@ struct HouseholdCard: View {
                         .font(.headline)
                         .fontWeight(.bold)
                     
-                    Text("Created \(household.createdAt.formatted(date: .abbreviated, time: .omitted))")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                    
-                    Text("\(household.members.count) member\(household.members.count != 1 ? "s" : "")")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
+                    HStack(spacing: 12) {
+                        Text("Created \(household.createdAt.formatted(date: .abbreviated, time: .omitted))")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                        
+                        Text("\(household.members.count) member\(household.members.count != 1 ? "s" : "")")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                        
+                        // Add task count with a more prominent visual
+                        let taskCount = choreViewModel.tasksCountForHousehold(household.id)
+                        HStack(spacing: 4) {
+                            Image(systemName: "checklist")
+                                .foregroundColor(.blue)
+                            Text("\(taskCount)")
+                                .fontWeight(.semibold)
+                                .foregroundColor(.blue)
+                        }
+                    }
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
                 

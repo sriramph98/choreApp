@@ -23,7 +23,8 @@ CREATE TABLE tasks (
   notes TEXT,
   repeatoption TEXT DEFAULT 'never',
   parenttaskid UUID,
-  createdat TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+  createdat TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+  householdid UUID
 );
 
 -- Enable Row Level Security
@@ -65,4 +66,21 @@ CREATE POLICY "Users can update their own tasks"
 CREATE POLICY "Users can delete their own tasks"
   ON tasks FOR DELETE
   TO authenticated
-  USING (true); 
+  USING (true);
+
+-- Update indexes to include the new column
+DROP INDEX IF EXISTS idx_tasks_userid;
+CREATE INDEX idx_tasks_userid_householdid ON tasks(userid, householdid);
+
+-- Add foreign key constraint if households table exists
+DO $$
+BEGIN
+    IF EXISTS (SELECT FROM information_schema.tables WHERE table_name = 'households') THEN
+        ALTER TABLE tasks 
+        ADD CONSTRAINT fk_tasks_household 
+        FOREIGN KEY (householdid) 
+        REFERENCES households(id) 
+        ON DELETE SET NULL;
+    END IF;
+END
+$$; 
