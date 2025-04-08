@@ -153,6 +153,18 @@ struct TasksView: View {
                                 .lineLimit(1)
                                 .truncationMode(.tail)
                         }
+                    } else {
+                        // Show "Unassigned" when no user is assigned
+                        HStack(spacing: 4) {
+                            Image(systemName: "person.fill.questionmark")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                            Text("Unassigned")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                                .lineLimit(1)
+                                .truncationMode(.tail)
+                        }
                     }
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -401,7 +413,7 @@ struct TasksView: View {
             }
             .onAppear {
                 // Set the current user based on the authenticated user
-                if let authUser = SupabaseManager.shared.authUser,
+                if let _ = SupabaseManager.shared.authUser,
                    let user = choreViewModel.users.first {
                     choreViewModel.setCurrentUser(user)
                 }
@@ -495,6 +507,29 @@ struct TaskDetailView: View {
                 
                 // Assigned to section - now editable
                 Section(header: Text("Assign To")) {
+                    // Unassigned option
+                    HStack {
+                        Image(systemName: "person.fill.questionmark")
+                            .font(.system(size: 16))
+                            .foregroundColor(.secondary)
+                            .frame(width: 30, height: 30)
+                            .background(Color.gray.opacity(0.2))
+                            .clipShape(Circle())
+                        Text("Unassigned")
+                            .font(.headline)
+                            .lineLimit(1)
+                            .truncationMode(.tail)
+                        Spacer()
+                        if selectedUserId == nil {
+                            Image(systemName: "checkmark")
+                                .foregroundColor(.blue)
+                        }
+                    }
+                    .contentShape(Rectangle())
+                    .onTapGesture {
+                        selectedUserId = nil
+                    }
+                    
                     ForEach(choreViewModel.users) { user in
                         HStack {
                             UserInitialsView(user: user, size: 30)

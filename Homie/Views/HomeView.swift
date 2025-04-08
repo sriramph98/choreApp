@@ -195,10 +195,18 @@ struct SettingsView: View {
                 Button("Cancel", role: .cancel) { }
                 Button("Log Out", role: .destructive) {
                     Task {
-                        await supabaseManager.signOut()
-                        // Log out the user
-                        hasCompletedLogin = false
-                        isPresented = false
+                        _ = await supabaseManager.signOut()
+                        // Clear all data when logging out
+                        await MainActor.run {
+                            choreViewModel.tasks.removeAll()
+                            choreViewModel.users.removeAll()
+                            choreViewModel.customChores.removeAll()
+                            choreViewModel.currentUser = nil
+                            
+                            // Log out the user
+                            hasCompletedLogin = false
+                            isPresented = false
+                        }
                     }
                 }
             } message: {
@@ -206,7 +214,7 @@ struct SettingsView: View {
             }
             .onAppear {
                 // Set the current user based on the authenticated user
-                if let authUser = supabaseManager.authUser,
+                if let _ = supabaseManager.authUser,
                    let user = choreViewModel.users.first {
                     choreViewModel.setCurrentUser(user)
                 }

@@ -143,135 +143,74 @@ class ChoreViewModel: ObservableObject {
         }
     }
     
-    func updateTask(id: UUID, name: String?, dueDate: Date?, isCompleted: Bool?, assignedTo: UUID?, notes: String?, repeatOption: RepeatOption? = nil) {
-        // Collect changes first, then apply them in a single async update
+    func updateTask(id: UUID, name: String? = nil, dueDate: Date? = nil, isCompleted: Bool? = nil, assignedTo: UUID? = nil, notes: String? = nil, repeatOption: RepeatOption? = nil) {
         if let index = tasks.firstIndex(where: { $0.id == id }) {
-            // Make a copy of the task to modify
-            var updatedTask = tasks[index]
-            let originalIsCompleted = updatedTask.isCompleted
-            var needsRecalculateFutureDates = false
-            var needsGenerateFutureOccurrences = false
-            var shouldRemoveFutureOccurrences = false
+            var task = tasks[index]
             
-            // Apply all updates to the copy first
+            // Update properties if new values are provided
             if let name = name {
-                updatedTask.name = name
+                task.name = name
             }
             
             if let dueDate = dueDate {
-                updatedTask.dueDate = dueDate
-                if updatedTask.repeatOption != .never {
-                    needsRecalculateFutureDates = true
-                }
+                task.dueDate = dueDate
             }
             
             if let isCompleted = isCompleted {
-                updatedTask.isCompleted = isCompleted
-                
-                // If task is newly completed and it's a repeating task, we'll need to generate more
-                if isCompleted != originalIsCompleted && isCompleted && updatedTask.repeatOption != .never {
-                    needsGenerateFutureOccurrences = true
-                }
+                task.isCompleted = isCompleted
             }
             
-            if let assignedTo = assignedTo {
-                updatedTask.assignedTo = assignedTo
+            if assignedTo != task.assignedTo {
+                task.assignedTo = assignedTo
             }
             
             if let notes = notes {
-                updatedTask.notes = notes
+                task.notes = notes
             }
             
             if let repeatOption = repeatOption {
-                let originalRepeatOption = updatedTask.repeatOption
-                updatedTask.repeatOption = repeatOption
-                
-                // Handle change in repeat option
-                if repeatOption != originalRepeatOption {
-                    // If changed from non-repeating to repeating
-                    if originalRepeatOption == .never && repeatOption != .never {
-                        needsGenerateFutureOccurrences = true
-                    }
-                    
-                    // If changed from repeating to non-repeating
-                    if originalRepeatOption != .never && repeatOption == .never {
-                        shouldRemoveFutureOccurrences = true
-                    }
-                    
-                    // If changed repeating frequency but still repeating
-                    if originalRepeatOption != .never && repeatOption != .never && originalRepeatOption != repeatOption {
-                        needsRecalculateFutureDates = true
+                task.repeatOption = repeatOption
+            }
+            
+            // Update the task in our array
+            tasks[index] = task
+            
+            // Save to Supabase if authenticated
+            if supabaseManager.isAuthenticated {
+                Task {
+                    // Try to update the task, which is more appropriate for existing tasks
+                    let success = await supabaseManager.updateTask(task)
+                    if !success {
+                        // If update fails (perhaps task doesn't exist yet), try saving it
+                        _ = await supabaseManager.saveTask(task)
                     }
                 }
             }
             
-            // Now apply all changes asynchronously in a single update
-            DispatchQueue.main.async {
-                // Update the task
-                self.tasks[index] = updatedTask
-                
-                // Handle future occurrences if needed
-                if shouldRemoveFutureOccurrences {
-                    self.removeAllFutureOccurrences(fromTaskId: id)
-                }
-                
-                if needsRecalculateFutureDates {
-                    self.recalculateFutureDueDates(fromTaskId: id)
-                }
-                
-                if needsGenerateFutureOccurrences {
-                    self.generateFutureOccurrences(for: updatedTask, count: 3)
-                }
-                
-                // Sync to backend if needed
-                if name != nil && updatedTask.repeatOption != .never {
-                    self.updateAllFutureOccurrences(fromTaskId: id, updateField: "name", value: updatedTask.name)
-                }
-                
-                if assignedTo != nil && updatedTask.repeatOption != .never {
-                    if let uuid = updatedTask.assignedTo {
-                        self.updateAllFutureOccurrences(fromTaskId: id, updateField: "assignedTo", value: uuid)
-                    }
-                }
-                
-                if notes != nil && updatedTask.repeatOption != .never {
-                    if let notesText = updatedTask.notes {
-                        self.updateAllFutureOccurrences(fromTaskId: id, updateField: "notes", value: notesText)
-                    }
-                }
-                
-                // Sync updated task to Supabase if authenticated
-                if self.supabaseManager.isAuthenticated {
-                    Task {
-                        await self.saveTaskToSupabase(updatedTask)
-                    }
+            // If the task has a parent and repeat settings changed, update future occurrences
+            if let parentTaskId = task.parentTaskId, let originalTask = tasks.first(where: { $0.id == parentTaskId }) {
+                if repeatOption != nil {
+                    updateAllFutureOccurrences(originalTask: originalTask, startingFrom: task)
                 }
             }
         }
     }
     
-    private func updateAllFutureOccurrences(fromTaskId id: UUID, updateField: String, value: Any) {
+    private func updateAllFutureOccurrences(originalTask: ChoreTask, startingFrom task: ChoreTask) {
         let now = Date()
         
-        DispatchQueue.main.async {
+        Task { @MainActor in
             for i in 0..<self.tasks.count {
-                if self.tasks[i].parentTaskId == id && self.tasks[i].dueDate > now {
-                    // Only update future occurrences, not past ones
-                    switch updateField {
-                    case "name":
-                        if let name = value as? String {
-                            self.tasks[i].name = name
-                        }
-                    case "assignedTo":
-                        if let assignedTo = value as? UUID {
-                            self.tasks[i].assignedTo = assignedTo
-                        }
-                    case "notes":
-                        if let notes = value as? String {
-                            self.tasks[i].notes = notes
-                        }
-                    default:
-                        break
+                if self.tasks[i].parentTaskId == originalTask.id && self.tasks[i].dueDate > now {
+                    // Copy updated fields to future occurrences
+                    self.tasks[i].name = task.name
+                    self.tasks[i].assignedTo = task.assignedTo
+                    self.tasks[i].notes = task.notes
+                    self.tasks[i].repeatOption = task.repeatOption
+                    
+                    // Also save to Supabase
+                    if supabaseManager.isAuthenticated {
+                        await supabaseManager.updateTask(self.tasks[i])
                     }
                 }
             }
@@ -373,8 +312,24 @@ class ChoreViewModel: ObservableObject {
             avatarSystemName: "person.circle.fill",
             color: color
         )
-        users.append(newUser)
-        currentUser = newUser
+        
+        // Use Task to avoid publishing changes from view updates
+        Task { @MainActor in
+            users.append(newUser)
+            currentUser = newUser
+            
+            // Save the new user to Supabase if authenticated
+            if supabaseManager.isAuthenticated {
+                Task {
+                    let saved = await supabaseManager.saveUserProfile(newUser)
+                    if saved {
+                        print("User profile saved to Supabase: \(newUser.name)")
+                    } else {
+                        print("Failed to save user profile to Supabase: \(newUser.name)")
+                    }
+                }
+            }
+        }
     }
     
     func getUser(by id: UUID) -> User? {
@@ -383,6 +338,34 @@ class ChoreViewModel: ObservableObject {
     
     func tasksAssignedTo(userId: UUID) -> [ChoreTask] {
         return tasks.filter { $0.assignedTo == userId }
+    }
+    
+    /// Clears all data and reloads it for the specified user
+    func switchToProfile(userId: UUID) async {
+        await MainActor.run {
+            // Clear all existing data
+            tasks.removeAll()
+            users.removeAll()
+            customChores.removeAll()
+            currentUser = nil
+        }
+        
+        // Load user data for this specific profile
+        if let supabaseUsers = await supabaseManager.fetchUsers() {
+            await MainActor.run {
+                users = supabaseUsers
+                currentUser = users.first(where: { $0.id == userId })
+            }
+        }
+        
+        // Load only tasks for this user
+        if let supaTasks = await supabaseManager.fetchTasks() {
+            await MainActor.run {
+                tasks = supaTasks
+            }
+        }
+        
+        print("Switched to profile: \(userId.uuidString)")
     }
     
     // Calendar and schedule functions
@@ -520,6 +503,9 @@ class ChoreViewModel: ObservableObject {
     }
     
     func setCurrentUser(_ user: User) {
-        currentUser = user
+        // Use Task to avoid publishing changes from view updates
+        Task { @MainActor in
+            currentUser = user
+        }
     }
 } 

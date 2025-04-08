@@ -301,7 +301,7 @@ class SupabaseManager: ObservableObject {
             
             let tasks = try decode(data: data, keyMapping: customKeyMapping, as: [TaskModel].self)
             
-            print("Decoded \(tasks.count) tasks from response")
+            print("Decoded \(tasks.count) tasks for user \(stringUserId)")
             
             // Convert to app's ChoreTask model
             return tasks.map { task in
@@ -317,7 +317,7 @@ class SupabaseManager: ObservableObject {
                 )
             }
         } catch {
-            print("Error fetching tasks: \(error)")
+            print("Error fetching tasks for user \(userId.uuidString): \(error)")
             return nil
         }
     }
@@ -356,10 +356,10 @@ class SupabaseManager: ObservableObject {
             
             print("Saving task with data: \(taskData)")
             
-            // Use the from method directly
+            // Use upsert instead of insert to handle existing tasks
             let response = try await client
                 .from("tasks")
-                .insert(taskData)
+                .upsert(taskData)
                 .execute()
             
             print("Task save response: \(response)")
@@ -407,9 +407,10 @@ class SupabaseManager: ObservableObject {
             
             print("Saving profile with data: \(profileData)")
             
+            // Use upsert instead of insert to handle existing profiles
             let response = try await client
                 .from("profiles")
-                .insert(profileData)
+                .upsert(profileData)
                 .execute()
             
             print("Profile saved successfully: \(response)")
@@ -430,7 +431,7 @@ class SupabaseManager: ObservableObject {
             print("Fetching users for auth_user_id: \(stringUserId)")
             
             // First try with the expected column name
-            var response = try await client
+            let response = try await client
                 .from("profiles")
                 .select()
                 .eq("authuserid", value: stringUserId)
@@ -439,7 +440,6 @@ class SupabaseManager: ObservableObject {
             print("User fetch response status: \(response.status)")
             
             let data = response.data
-            let decoder = JSONDecoder()
             
             // Custom key mapping for snake_case to camelCase
             let customKeyMapping: [String: String] = [
@@ -467,6 +467,55 @@ class SupabaseManager: ObservableObject {
         } catch {
             print("Error fetching users: \(error)")
             return nil
+        }
+    }
+    
+    /// Update an existing task in Supabase
+    @MainActor
+    func updateTask(_ task: ChoreViewModel.ChoreTask) async -> Bool {
+        guard isAuthenticated, let userId = authUser?.id else { return false }
+        
+        print("Updating task with ID: \(task.id) and user_id: \(userId)")
+        
+        do {
+            // Create a dictionary with the right data types for Supabase
+            var taskData: [String: AnyJSON] = [
+                "name": AnyJSON(stringLiteral: task.name),
+                "duedate": AnyJSON(stringLiteral: ISO8601DateFormatter().string(from: task.dueDate)),
+                "iscompleted": AnyJSON(booleanLiteral: task.isCompleted),
+                "repeatoption": AnyJSON(stringLiteral: task.repeatOption.rawValue)
+            ]
+            
+            // Only add optional fields if they have valid values
+            if let assignedTo = task.assignedTo, !assignedTo.uuidString.isEmpty {
+                taskData["assignedto"] = AnyJSON(stringLiteral: assignedTo.uuidString)
+            } else {
+                // Clear the assignedto field if no one is assigned
+                taskData["assignedto"] = AnyJSON.null
+            }
+            
+            if let notes = task.notes, !notes.isEmpty {
+                taskData["notes"] = AnyJSON(stringLiteral: notes)
+            }
+            
+            if let parentTaskId = task.parentTaskId, !parentTaskId.uuidString.isEmpty {
+                taskData["parenttaskid"] = AnyJSON(stringLiteral: parentTaskId.uuidString)
+            }
+            
+            print("Updating task with data: \(taskData)")
+            
+            // Use update instead of upsert/insert for existing tasks
+            let response = try await client
+                .from("tasks")
+                .update(taskData)
+                .eq("id", value: task.id.uuidString)
+                .execute()
+            
+            print("Task update response: \(response)")
+            return true
+        } catch {
+            print("Error updating task: \(error) - make sure the task exists in the database")
+            return false
         }
     }
     

@@ -15,202 +15,137 @@ struct LoginView: View {
     @State private var showingSuccessAlert = false
     
     var body: some View {
-        NavigationStack {
+        ZStack {
+            Color(.systemBackground)
+                .ignoresSafeArea()
+            
             VStack(spacing: 30) {
-                // App title and icon
-                VStack(spacing: 16) {
-                    Image("Logo")
-                        .resizable()
-                        .aspectRatio(contentMode: .fit)
-                        .frame(width: 100, height: 100)
+                // Logo and header
+                VStack(spacing: 15) {
+                    Image(systemName: "house.fill")
+                        .font(.system(size: 60))
                         .foregroundColor(.blue)
-                        .padding(.top, 20)
                     
                     Text("Homie")
-                        .font(.system(size: 32, weight: .bold))
-                }
-                .padding(.top, 30)
-                
-                // Login form
-                VStack(spacing: 20) {
-                    // Email field
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text("Email")
-                            .font(.headline)
-                            .foregroundColor(.secondary)
-                        
-                        TextField("your@email.com", text: $email)
-                            .keyboardType(.emailAddress)
-                            .autocapitalization(.none)
-                            .autocorrectionDisabled()
-                            .padding()
-                            .background(Color(.systemGray6))
-                            .cornerRadius(12)
-                    }
+                        .font(.largeTitle)
+                        .fontWeight(.bold)
                     
-                    // Password field
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text("Password")
-                            .font(.headline)
-                            .foregroundColor(.secondary)
-                        
-                        HStack {
-                            Group {
-                                if isSecured {
-                                    SecureField("Enter your password", text: $password)
-                                } else {
-                                    TextField("Enter your password", text: $password)
-                                }
-                            }
-                            .padding()
-                            .autocapitalization(.none)
-                            .autocorrectionDisabled()
-                            
-                            Button {
-                                isSecured.toggle()
-                            } label: {
-                                Image(systemName: isSecured ? "eye.slash" : "eye")
-                                    .foregroundColor(.gray)
-                            }
-                            .padding(.trailing, 12)
-                        }
-                        .background(Color(.systemGray6))
-                        .cornerRadius(12)
-                        
-                        HStack {
-                            Spacer()
-                            
-                            // Forgot password
-                            Button {
-                                // Password reset functionality would go here
-                            } label: {
-                                Text("Forgot Password?")
-                                    .font(.footnote)
-                                    .foregroundColor(.blue)
-                            }
-                        }
-                        .padding(.top, 5)
-                    }
+                    Text("Your personal task manager")
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
                 }
-                .padding(.horizontal, 30)
+                .padding(.top, 60)
                 
-                Spacer()
-                
-                // Login buttons
-                VStack(spacing: 16) {
+                // Sign in form
+                VStack(spacing: 25) {
+                    TextField("Email", text: $email)
+                        .autocapitalization(.none)
+                        .keyboardType(.emailAddress)
+                        .textContentType(.emailAddress)
+                        .padding()
+                        .background(Color(.systemGray6))
+                        .cornerRadius(10)
+                    
+                    SecureField("Password", text: $password)
+                        .textContentType(.password)
+                        .padding()
+                        .background(Color(.systemGray6))
+                        .cornerRadius(10)
+                    
+                    // Sign in button
                     Button {
-                        Task {
-                            await loginWithSupabase()
-                        }
+                        signIn()
                     } label: {
-                        Group {
-                            if supabaseManager.isLoading {
-                                ProgressView()
-                                    .progressViewStyle(CircularProgressViewStyle(tint: .white))
-                            } else {
-                                Text("Log In")
-                                    .font(.headline)
-                            }
+                        Text("Sign In")
+                            .fontWeight(.bold)
+                            .foregroundColor(.white)
+                            .frame(maxWidth: .infinity)
+                            .padding()
+                            .background(Color.blue)
+                            .cornerRadius(10)
+                    }
+                    .disabled(supabaseManager.isLoading)
+                    
+                    // Google sign in button
+                    Button {
+                        signInWithGoogle()
+                    } label: {
+                        HStack {
+                            Image(systemName: "g.circle.fill")
+                                .resizable()
+                                .frame(width: 20, height: 20)
+                                .foregroundColor(.primary)
+                            Text("Sign in with Google")
+                                .fontWeight(.medium)
                         }
                         .frame(maxWidth: .infinity)
                         .padding()
-                        .background(Color.blue)
-                        .foregroundColor(.white)
-                        .cornerRadius(12)
+                        .background(Color(.systemGray6))
+                        .cornerRadius(10)
                     }
-                    .disabled(email.isEmpty || password.isEmpty || supabaseManager.isLoading)
-                    .opacity((email.isEmpty || password.isEmpty || supabaseManager.isLoading) ? 0.6 : 1)
+                    .disabled(supabaseManager.isLoading)
                     
-                    // Social login options
-                    VStack(spacing: 12) {
-                        Button {
-                            Task {
-                                await signInWithGoogle()
-                            }
-                        } label: {
-                            HStack {
-                                Image(systemName: "g.circle.fill")
-                                    .font(.title3)
-                                Text("Continue with Google")
-                            }
-                            .frame(maxWidth: .infinity)
-                            .padding()
-                            .background(Color(.systemGray6))
-                            .foregroundColor(.primary)
-                            .cornerRadius(12)
-                        }
-                    }
-                    
-                    // Skip login
-                    Button {
-                        // Skip login and proceed to the app
-                        hasCompletedLogin = true
-                    } label: {
-                        Text("Skip Login for Now")
-                            .foregroundColor(.blue)
-                    }
-                    .padding(.bottom)
-                    
-                    // Sign up option
+                    // Sign up prompt
                     HStack {
                         Text("Don't have an account?")
                             .foregroundColor(.secondary)
-                        
                         Button {
                             showingSignUpSheet = true
                         } label: {
                             Text("Sign Up")
-                                .fontWeight(.semibold)
+                                .fontWeight(.medium)
                                 .foregroundColor(.blue)
                         }
                     }
-                    .font(.subheadline)
+                    .padding(.top, 10)
                 }
                 .padding(.horizontal, 30)
-                .padding(.bottom, 30)
-            }
-            .navigationTitle("Sign In")
-            .navigationBarTitleDisplayMode(.inline)
-            .sheet(isPresented: $showingSignUpSheet) {
-                SignUpView(email: email, password: password, showingSuccessAlert: $showingSuccessAlert)
-                    .environmentObject(choreViewModel)
+                
+                if supabaseManager.isLoading {
+                    ProgressView()
+                        .scaleEffect(1.5)
+                        .padding()
+                }
+                
+                Spacer()
             }
         }
         .alert(isPresented: $showingErrorAlert) {
             Alert(
-                title: Text("Login Error"),
+                title: Text("Sign In Error"),
                 message: Text(errorMessage),
                 dismissButton: .default(Text("OK"))
             )
         }
-        .alert(isPresented: $showingSuccessAlert) {
-            Alert(
-                title: Text("Sign Up Successful"),
-                message: Text("Your account has been created successfully. You can now log in."),
-                dismissButton: .default(Text("OK"))
+        .alert("Sign Up Successful", isPresented: $showingSuccessAlert) {
+            Button("OK") { }
+        } message: {
+            Text("Your account has been created successfully. You can now sign in with your email and password.")
+        }
+        .sheet(isPresented: $showingSignUpSheet) {
+            SignUpView(
+                email: email,
+                password: password,
+                showingSuccessAlert: $showingSuccessAlert
             )
+            .environmentObject(choreViewModel)
         }
         .onChange(of: supabaseManager.isAuthenticated) { oldValue, newValue in
             if newValue {
                 hasCompletedLogin = true
                 
-                // Also fetch and sync user data from Supabase
+                // When authenticated, clear existing data and load fresh data for this user
                 Task {
-                    if let supabaseUsers = await supabaseManager.fetchUsers() {
-                        // Update local user data
-                        DispatchQueue.main.async {
-                            for user in supabaseUsers {
-                                if !choreViewModel.users.contains(where: { $0.id == user.id }) {
-                                    choreViewModel.users.append(user)
-                                }
+                    if let authUser = supabaseManager.authUser {
+                        // First fetch users to ensure we have the current user's profile
+                        if let supabaseUsers = await supabaseManager.fetchUsers() {
+                            if supabaseUsers.isEmpty {
+                                // No profile exists yet, this might be a new sign-up
+                                print("No existing profile found for user \(authUser.id)")
+                            } else {
+                                // Profile exists, switch to it
+                                await choreViewModel.switchToProfile(userId: authUser.id)
                             }
-                        }
-                    }
-                    
-                    if let supaTasks = await supabaseManager.fetchTasks() {
-                        // Update local tasks
-                        DispatchQueue.main.async {
-                            choreViewModel.tasks = supaTasks
                         }
                     }
                 }
@@ -224,31 +159,28 @@ struct LoginView: View {
         }
     }
     
-    private func loginWithSupabase() async {
+    private func signIn() {
         if !email.isEmpty && !password.isEmpty {
             print("Attempting to log in with email: \(email)")
-            let success = await supabaseManager.signIn(email: email, password: password)
             
-            if !success {
-                if let error = supabaseManager.authError {
-                    print("Login failed with error: \(error.localizedDescription)")
-                    errorMessage = error.localizedDescription
-                } else {
-                    print("Login failed without specific error")
-                    errorMessage = "Invalid email or password"
+            Task {
+                let success = await supabaseManager.signIn(email: email, password: password)
+                
+                if !success {
+                    errorMessage = supabaseManager.authError?.localizedDescription ?? "Invalid email or password"
+                    showingErrorAlert = true
                 }
-                showingErrorAlert = true
-            } else {
-                print("Login successful")
             }
         }
     }
     
-    private func signInWithGoogle() async {
-        let success = await supabaseManager.signInWithProvider(provider: .google)
-        if !success && supabaseManager.authError == nil {
-            errorMessage = "Unable to sign in with Google"
-            showingErrorAlert = true
+    private func signInWithGoogle() {
+        Task {
+            let success = await supabaseManager.signInWithProvider(provider: .google)
+            if !success && supabaseManager.authError == nil {
+                errorMessage = "Unable to sign in with Google"
+                showingErrorAlert = true
+            }
         }
     }
 }
@@ -453,9 +385,18 @@ struct SignUpView: View {
                 color: "blue"
             )
             
-            // Add the user to the view model
+            // Clear existing data
             await MainActor.run {
-                choreViewModel.addUser(name: name, color: "blue")
+                choreViewModel.tasks.removeAll()
+                choreViewModel.users.removeAll()
+                choreViewModel.customChores.removeAll()
+                choreViewModel.currentUser = nil
+            }
+            
+            // Add the user to the view model (don't use addUser which adds to existing users)
+            await MainActor.run {
+                choreViewModel.users.append(newUser)
+                choreViewModel.currentUser = newUser
                 hasCompletedLogin = true
             }
             
