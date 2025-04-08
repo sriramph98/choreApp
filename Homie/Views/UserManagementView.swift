@@ -23,7 +23,7 @@ struct UserManagementView: View {
                         Spacer()
                         ForEach(availableColors, id: \.self) { color in
                             Circle()
-                                .fill(Color(color))
+                                .fill(colorFromString(color))
                                 .frame(width: 24, height: 24)
                                 .overlay(
                                     Circle()
@@ -45,7 +45,7 @@ struct UserManagementView: View {
                     ForEach(users) { user in
                         HStack {
                             Image(systemName: user.avatarSystemName)
-                                .foregroundColor(Color(user.color))
+                                .foregroundColor(colorFromString(user.color))
                             Text(user.name)
                             Spacer()
                         }

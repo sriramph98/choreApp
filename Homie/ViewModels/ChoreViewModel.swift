@@ -5,6 +5,7 @@ class ChoreViewModel: ObservableObject {
     @Published var tasks: [ChoreTask] = []
     @Published var users: [User] = []
     @Published var customChores: [String] = []
+    @Published var currentUser: User?
     private let supabaseManager = SupabaseManager.shared
     
     enum RepeatOption: String, Codable {
@@ -143,117 +144,107 @@ class ChoreViewModel: ObservableObject {
     }
     
     func updateTask(id: UUID, name: String?, dueDate: Date?, isCompleted: Bool?, assignedTo: UUID?, notes: String?, repeatOption: RepeatOption? = nil) {
+        // Collect changes first, then apply them in a single async update
         if let index = tasks.firstIndex(where: { $0.id == id }) {
-            var task = tasks[index]
-            let originalIsCompleted = task.isCompleted
+            // Make a copy of the task to modify
+            var updatedTask = tasks[index]
+            let originalIsCompleted = updatedTask.isCompleted
+            var needsRecalculateFutureDates = false
+            var needsGenerateFutureOccurrences = false
+            var shouldRemoveFutureOccurrences = false
             
+            // Apply all updates to the copy first
             if let name = name {
-                task.name = name
-                
-                // If name changes, update all future occurrences
-                if task.repeatOption != .never {
-                    updateAllFutureOccurrences(fromTaskId: id, updateField: "name", value: name)
-                }
+                updatedTask.name = name
             }
             
             if let dueDate = dueDate {
-                task.dueDate = dueDate
-                
-                // If due date changes, update all future occurrences
-                if task.repeatOption != .never {
-                    recalculateFutureDueDates(fromTaskId: id)
+                updatedTask.dueDate = dueDate
+                if updatedTask.repeatOption != .never {
+                    needsRecalculateFutureDates = true
                 }
             }
             
             if let isCompleted = isCompleted {
-                task.isCompleted = isCompleted
+                updatedTask.isCompleted = isCompleted
                 
-                // If task is marked as completed and it's a repeating task,
-                // ensure future occurrences exist
-                if isCompleted != originalIsCompleted && isCompleted && task.repeatOption != .never {
-                    let futureTasks = tasks.filter { $0.parentTaskId == task.id || $0.id == task.id }
-                    let incompleteFutureTasks = futureTasks.filter { !$0.isCompleted }
-                    
-                    // If we don't have at least 3 incomplete future tasks, generate more
-                    if incompleteFutureTasks.count < 3 {
-                        let lastTask = incompleteFutureTasks.sorted(by: { $0.dueDate > $1.dueDate }).first ?? task
-                        let additionalNeeded = 3 - incompleteFutureTasks.count
-                        
-                        // Generate additional occurrences based on the last one
-                        var lastDate = lastTask.dueDate
-                        for _ in 0..<additionalNeeded {
-                            if let nextDate = calculateNextDueDate(from: lastDate, option: task.repeatOption) {
-                                let newOccurrence = ChoreTask(
-                                    name: task.name,
-                                    dueDate: nextDate,
-                                    isCompleted: false,
-                                    assignedTo: task.assignedTo,
-                                    notes: task.notes,
-                                    repeatOption: task.repeatOption,
-                                    parentTaskId: task.id
-                                )
-                                tasks.append(newOccurrence)
-                                lastDate = nextDate
-                                
-                                // Sync new occurrence to Supabase if authenticated
-                                if supabaseManager.isAuthenticated {
-                                    Task {
-                                        await saveTaskToSupabase(newOccurrence)
-                                    }
-                                }
-                            }
-                        }
-                    }
+                // If task is newly completed and it's a repeating task, we'll need to generate more
+                if isCompleted != originalIsCompleted && isCompleted && updatedTask.repeatOption != .never {
+                    needsGenerateFutureOccurrences = true
                 }
             }
             
             if let assignedTo = assignedTo {
-                task.assignedTo = assignedTo
-                
-                // If assignment changes, update all future occurrences
-                if task.repeatOption != .never {
-                    updateAllFutureOccurrences(fromTaskId: id, updateField: "assignedTo", value: assignedTo)
-                }
+                updatedTask.assignedTo = assignedTo
             }
             
             if let notes = notes {
-                task.notes = notes
-                
-                // If notes change, update all future occurrences
-                if task.repeatOption != .never {
-                    updateAllFutureOccurrences(fromTaskId: id, updateField: "notes", value: notes)
-                }
+                updatedTask.notes = notes
             }
             
             if let repeatOption = repeatOption {
-                let originalRepeatOption = task.repeatOption
-                task.repeatOption = repeatOption
+                let originalRepeatOption = updatedTask.repeatOption
+                updatedTask.repeatOption = repeatOption
                 
                 // Handle change in repeat option
                 if repeatOption != originalRepeatOption {
-                    // If changed from non-repeating to repeating, generate future occurrences
+                    // If changed from non-repeating to repeating
                     if originalRepeatOption == .never && repeatOption != .never {
-                        generateFutureOccurrences(for: task, count: 3)
+                        needsGenerateFutureOccurrences = true
                     }
                     
-                    // If changed from repeating to non-repeating, remove future occurrences
+                    // If changed from repeating to non-repeating
                     if originalRepeatOption != .never && repeatOption == .never {
-                        removeAllFutureOccurrences(fromTaskId: id)
+                        shouldRemoveFutureOccurrences = true
                     }
                     
-                    // If changed repeating frequency, recalculate future occurrences
+                    // If changed repeating frequency but still repeating
                     if originalRepeatOption != .never && repeatOption != .never && originalRepeatOption != repeatOption {
-                        recalculateFutureDueDates(fromTaskId: id)
+                        needsRecalculateFutureDates = true
                     }
                 }
             }
             
-            tasks[index] = task
-            
-            // Sync updated task to Supabase if authenticated
-            if supabaseManager.isAuthenticated {
-                Task {
-                    await saveTaskToSupabase(task)
+            // Now apply all changes asynchronously in a single update
+            DispatchQueue.main.async {
+                // Update the task
+                self.tasks[index] = updatedTask
+                
+                // Handle future occurrences if needed
+                if shouldRemoveFutureOccurrences {
+                    self.removeAllFutureOccurrences(fromTaskId: id)
+                }
+                
+                if needsRecalculateFutureDates {
+                    self.recalculateFutureDueDates(fromTaskId: id)
+                }
+                
+                if needsGenerateFutureOccurrences {
+                    self.generateFutureOccurrences(for: updatedTask, count: 3)
+                }
+                
+                // Sync to backend if needed
+                if name != nil && updatedTask.repeatOption != .never {
+                    self.updateAllFutureOccurrences(fromTaskId: id, updateField: "name", value: updatedTask.name)
+                }
+                
+                if assignedTo != nil && updatedTask.repeatOption != .never {
+                    if let uuid = updatedTask.assignedTo {
+                        self.updateAllFutureOccurrences(fromTaskId: id, updateField: "assignedTo", value: uuid)
+                    }
+                }
+                
+                if notes != nil && updatedTask.repeatOption != .never {
+                    if let notesText = updatedTask.notes {
+                        self.updateAllFutureOccurrences(fromTaskId: id, updateField: "notes", value: notesText)
+                    }
+                }
+                
+                // Sync updated task to Supabase if authenticated
+                if self.supabaseManager.isAuthenticated {
+                    Task {
+                        await self.saveTaskToSupabase(updatedTask)
+                    }
                 }
             }
         }
@@ -262,24 +253,26 @@ class ChoreViewModel: ObservableObject {
     private func updateAllFutureOccurrences(fromTaskId id: UUID, updateField: String, value: Any) {
         let now = Date()
         
-        for i in 0..<tasks.count {
-            if tasks[i].parentTaskId == id && tasks[i].dueDate > now {
-                // Only update future occurrences, not past ones
-                switch updateField {
-                case "name":
-                    if let name = value as? String {
-                        tasks[i].name = name
+        DispatchQueue.main.async {
+            for i in 0..<self.tasks.count {
+                if self.tasks[i].parentTaskId == id && self.tasks[i].dueDate > now {
+                    // Only update future occurrences, not past ones
+                    switch updateField {
+                    case "name":
+                        if let name = value as? String {
+                            self.tasks[i].name = name
+                        }
+                    case "assignedTo":
+                        if let assignedTo = value as? UUID {
+                            self.tasks[i].assignedTo = assignedTo
+                        }
+                    case "notes":
+                        if let notes = value as? String {
+                            self.tasks[i].notes = notes
+                        }
+                    default:
+                        break
                     }
-                case "assignedTo":
-                    if let assignedTo = value as? UUID {
-                        tasks[i].assignedTo = assignedTo
-                    }
-                case "notes":
-                    if let notes = value as? String {
-                        tasks[i].notes = notes
-                    }
-                default:
-                    break
                 }
             }
         }
@@ -321,30 +314,37 @@ class ChoreViewModel: ObservableObject {
     
     func deleteTask(id: UUID) {
         // Get the task before removing it
-        if let task = tasks.first(where: { $0.id == id }) {
+        guard let task = tasks.first(where: { $0.id == id }) else { return }
+        
+        DispatchQueue.main.async {
+            // Make a local copy of child tasks if needed
+            var childTasksToDelete: [ChoreTask] = []
+            
             // If this is a parent repeating task, also delete all its instances
             if task.repeatOption != .never && task.parentTaskId == nil {
-                // Remove all child instances
-                let childTasks = tasks.filter { $0.parentTaskId == id }
-                tasks.removeAll { $0.parentTaskId == id }
+                // Find all child instances
+                childTasksToDelete = self.tasks.filter { $0.parentTaskId == id }
                 
-                // Delete child tasks from Supabase
-                if supabaseManager.isAuthenticated {
-                    for childTask in childTasks {
+                // Remove all child instances
+                self.tasks.removeAll { $0.parentTaskId == id }
+                
+                // Delete child tasks from Supabase if authenticated
+                if self.supabaseManager.isAuthenticated {
+                    for childTask in childTasksToDelete {
                         Task {
-                            await deleteTaskFromSupabase(childTask.id)
+                            await self.deleteTaskFromSupabase(childTask.id)
                         }
                     }
                 }
             }
             
             // Remove the task itself
-            tasks.removeAll { $0.id == id }
+            self.tasks.removeAll { $0.id == id }
             
             // Delete from Supabase
-            if supabaseManager.isAuthenticated {
+            if self.supabaseManager.isAuthenticated {
                 Task {
-                    await deleteTaskFromSupabase(id)
+                    await self.deleteTaskFromSupabase(id)
                 }
             }
         }
@@ -367,15 +367,14 @@ class ChoreViewModel: ObservableObject {
     
     // User management functions
     func addUser(name: String, color: String) {
-        let newUser = User(name: name, avatarSystemName: "person.circle.fill", color: color)
+        let newUser = User(
+            id: UUID(),
+            name: name,
+            avatarSystemName: "person.circle.fill",
+            color: color
+        )
         users.append(newUser)
-        
-        // Save to Supabase if authenticated
-        if supabaseManager.isAuthenticated {
-            Task {
-                _ = await supabaseManager.saveUserProfile(newUser)
-            }
-        }
+        currentUser = newUser
     }
     
     func getUser(by id: UUID) -> User? {
@@ -518,5 +517,9 @@ class ChoreViewModel: ObservableObject {
                 }
             }
         }
+    }
+    
+    func setCurrentUser(_ user: User) {
+        currentUser = user
     }
 } 

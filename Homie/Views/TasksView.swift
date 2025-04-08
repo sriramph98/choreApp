@@ -7,6 +7,7 @@ struct TasksView: View {
     @State private var showingPeopleSheet = false
     @State private var selectedTask: ChoreViewModel.ChoreTask?
     @Binding var showSettings: Bool
+    @State private var showingSettings = false
     
     init(showSettings: Binding<Bool>) {
         self._showSettings = showSettings
@@ -85,6 +86,9 @@ struct TasksView: View {
         }
         .sheet(isPresented: $showingPeopleSheet) {
             PeopleManagementView(isPresented: $showingPeopleSheet)
+        }
+        .sheet(isPresented: $showingSettings) {
+            settingsSheet
         }
         .toolbar {
             // Left side - Settings icon
@@ -252,6 +256,158 @@ struct TasksView: View {
             return taskDate > todayDate && taskDate < endOfWeek
         }.sorted { $0.dueDate < $1.dueDate }
     }
+    
+    private var settingsSheet: some View {
+        NavigationStack {
+            List {
+                Section(header: Text("Account Information")) {
+                    if let currentUser = choreViewModel.currentUser {
+                        // User avatar and name
+                        HStack {
+                            Image(systemName: currentUser.avatarSystemName)
+                                .font(.system(size: 40))
+                                .foregroundColor(.white)
+                                .frame(width: 60, height: 60)
+                                .background(currentUser.uiColor)
+                                .clipShape(Circle())
+                            
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text(currentUser.name)
+                                    .font(.title3)
+                                    .fontWeight(.semibold)
+                                Text(SupabaseManager.shared.authUser?.email ?? "No email")
+                                    .font(.subheadline)
+                                    .foregroundColor(.secondary)
+                            }
+                            .padding(.leading, 8)
+                        }
+                        .padding(.vertical, 8)
+                        
+                        // User ID
+                        HStack {
+                            Text("User ID")
+                                .foregroundColor(.secondary)
+                            Spacer()
+                            Text(currentUser.id.uuidString.prefix(8) + "...")
+                                .foregroundColor(.secondary)
+                                .font(.caption)
+                        }
+                        
+                        // Account type
+                        HStack {
+                            Text("Account Type")
+                                .foregroundColor(.secondary)
+                            Spacer()
+                            Text(SupabaseManager.shared.authUser?.appMetadata["provider"]?.description ?? "Email")
+                                .foregroundColor(.secondary)
+                                .font(.caption)
+                        }
+                        
+                        // Account created
+                        if let createdAt = SupabaseManager.shared.authUser?.createdAt {
+                            HStack {
+                                Text("Member Since")
+                                    .foregroundColor(.secondary)
+                                Spacer()
+                                Text(createdAt.formatted(date: .abbreviated, time: .omitted))
+                                    .foregroundColor(.secondary)
+                                    .font(.caption)
+                            }
+                        }
+                        
+                        // Tasks stats
+                        HStack {
+                            Text("Assigned Tasks")
+                                .foregroundColor(.secondary)
+                            Spacer()
+                            Text("\(choreViewModel.tasksAssignedTo(userId: currentUser.id).count)")
+                                .foregroundColor(.secondary)
+                                .font(.caption)
+                        }
+                    } else {
+                        Text("No user profile found")
+                            .foregroundColor(.secondary)
+                    }
+                }
+                
+                Section(header: Text("Profile")) {
+                    NavigationLink {
+                        ProfileView()
+                    } label: {
+                        Label("Edit Profile", systemImage: "person.crop.circle")
+                    }
+                }
+                
+                Section(header: Text("App Settings")) {
+                    NavigationLink {
+                        Text("Notifications Settings")
+                    } label: {
+                        Label("Notifications", systemImage: "bell")
+                    }
+                    
+                    NavigationLink {
+                        Text("Theme Settings")
+                    } label: {
+                        Label("Theme", systemImage: "paintpalette")
+                    }
+                }
+                
+                Section(header: Text("Account Actions")) {
+                    Button(action: {
+                        Task {
+                            await SupabaseManager.shared.signOut()
+                        }
+                    }) {
+                        HStack {
+                            Image(systemName: "rectangle.portrait.and.arrow.right")
+                                .foregroundColor(.red)
+                            Text("Sign Out")
+                                .foregroundColor(.red)
+                        }
+                    }
+                }
+                
+                Section(header: Text("About")) {
+                    NavigationLink {
+                        Text("Help & Support")
+                    } label: {
+                        Label("Help & Support", systemImage: "questionmark.circle")
+                    }
+                    
+                    NavigationLink {
+                        Text("Privacy Policy")
+                    } label: {
+                        Label("Privacy Policy", systemImage: "lock.shield")
+                    }
+                    
+                    NavigationLink {
+                        Text("Terms of Service")
+                    } label: {
+                        Label("Terms of Service", systemImage: "doc.text")
+                    }
+                }
+            }
+            .navigationTitle("Settings")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button {
+                        showingSettings = false
+                    } label: {
+                        Image(systemName: "xmark")
+                            .foregroundColor(.gray)
+                    }
+                }
+            }
+            .onAppear {
+                // Set the current user based on the authenticated user
+                if let authUser = SupabaseManager.shared.authUser,
+                   let user = choreViewModel.users.first {
+                    choreViewModel.setCurrentUser(user)
+                }
+            }
+        }
+    }
 }
 
 struct UserInitialsView: View {
@@ -271,7 +427,7 @@ struct UserInitialsView: View {
     var body: some View {
         ZStack {
             Circle()
-                .fill(Color(user.color))
+                .fill(colorFromString(user.color))
             
             Text(initials)
                 .font(.system(size: size * 0.4))

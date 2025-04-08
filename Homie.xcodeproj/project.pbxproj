@@ -33,9 +33,22 @@
 		80AE96F82D1856E5003B9BFD /* HomieUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = HomieUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		80141D1E2DA2F31D00827206 /* Exceptions for "Homie" folder in "Homie" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = 80AE96DD2D1856E3003B9BFD /* Homie */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
+
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		80AE96E02D1856E3003B9BFD /* Homie */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				80141D1E2DA2F31D00827206 /* Exceptions for "Homie" folder in "Homie" target */,
+			);
 			path = Homie;
 			sourceTree = "<group>";
 		};
@@ -421,6 +434,7 @@
 				DEVELOPMENT_TEAM = 34587JNE8E;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = Homie/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = Homie;
 				INFOPLIST_KEY_NSFaceIDUsageDescription = "We use Face ID to securely sign you in to your account.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
@@ -453,6 +467,7 @@
 				DEVELOPMENT_TEAM = 34587JNE8E;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = Homie/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = Homie;
 				INFOPLIST_KEY_NSFaceIDUsageDescription = "We use Face ID to securely sign you in to your account.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;

@@ -9,7 +9,7 @@ struct HomeView: View {
         TabView(selection: $selectedTab) {
             NavigationStack {
                 TasksView(showSettings: $showSettings)
-                    .navigationTitle("Homie Tasks")
+                    .navigationTitle("Tasks")
                     .navigationBarTitleDisplayMode(.large)
             }
             .tabItem {
@@ -19,7 +19,7 @@ struct HomeView: View {
             
             NavigationStack {
                 ChoreCalendarView()
-                    .navigationTitle("Homie Schedule")
+                    .navigationTitle("Schedule")
                     .navigationBarTitleDisplayMode(.large)
             }
             .tabItem {
@@ -48,7 +48,7 @@ struct HomeView: View {
                     
                     Spacer()
                 }
-                .navigationTitle("Homie Chat")
+                .navigationTitle("Chat")
                 .navigationBarTitleDisplayMode(.large)
             }
             .tabItem {
@@ -66,6 +66,7 @@ struct HomeView: View {
 
 struct SettingsView: View {
     @EnvironmentObject var choreViewModel: ChoreViewModel
+    @StateObject private var supabaseManager = SupabaseManager.shared
     @Binding var isPresented: Bool
     @AppStorage("hasCompletedOnboarding") private var hasCompletedOnboarding = false
     @AppStorage("hasCompletedLogin") private var hasCompletedLogin = false
@@ -74,6 +75,77 @@ struct SettingsView: View {
     var body: some View {
         NavigationStack {
             List {
+                // User profile section
+                Section(header: Text("Account Information")) {
+                    if let currentUser = choreViewModel.currentUser {
+                        // User avatar and name
+                        HStack {
+                            Image(systemName: currentUser.avatarSystemName)
+                                .font(.system(size: 40))
+                                .foregroundColor(.white)
+                                .frame(width: 60, height: 60)
+                                .background(currentUser.uiColor)
+                                .clipShape(Circle())
+                            
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text(currentUser.name)
+                                    .font(.title3)
+                                    .fontWeight(.semibold)
+                                Text(supabaseManager.authUser?.email ?? "No email")
+                                    .font(.subheadline)
+                                    .foregroundColor(.secondary)
+                            }
+                            .padding(.leading, 8)
+                        }
+                        .padding(.vertical, 8)
+                        
+                        // User ID
+                        HStack {
+                            Text("User ID")
+                                .foregroundColor(.secondary)
+                            Spacer()
+                            Text(currentUser.id.uuidString.prefix(8) + "...")
+                                .foregroundColor(.secondary)
+                                .font(.caption)
+                        }
+                        
+                        // Account type
+                        HStack {
+                            Text("Account Type")
+                                .foregroundColor(.secondary)
+                            Spacer()
+                            Text(supabaseManager.authUser?.appMetadata["provider"]?.description ?? "Email")
+                                .foregroundColor(.secondary)
+                                .font(.caption)
+                        }
+                        
+                        // Account created
+                        if let createdAt = supabaseManager.authUser?.createdAt {
+                            HStack {
+                                Text("Member Since")
+                                    .foregroundColor(.secondary)
+                                Spacer()
+                                Text(createdAt.formatted(date: .abbreviated, time: .omitted))
+                                    .foregroundColor(.secondary)
+                                    .font(.caption)
+                            }
+                        }
+                        
+                        // Tasks stats
+                        HStack {
+                            Text("Assigned Tasks")
+                                .foregroundColor(.secondary)
+                            Spacer()
+                            Text("\(choreViewModel.tasksAssignedTo(userId: currentUser.id).count)")
+                                .foregroundColor(.secondary)
+                                .font(.caption)
+                        }
+                    } else {
+                        Text("No user profile found")
+                            .foregroundColor(.secondary)
+                    }
+                }
+                
                 Section(header: Text("People")) {
                     NavigationLink {
                         SettingsPeopleView()
@@ -122,12 +194,22 @@ struct SettingsView: View {
             .alert("Log Out", isPresented: $showingLogoutAlert) {
                 Button("Cancel", role: .cancel) { }
                 Button("Log Out", role: .destructive) {
-                    // Log out the user
-                    hasCompletedLogin = false
-                    isPresented = false
+                    Task {
+                        await supabaseManager.signOut()
+                        // Log out the user
+                        hasCompletedLogin = false
+                        isPresented = false
+                    }
                 }
             } message: {
                 Text("Are you sure you want to log out?")
+            }
+            .onAppear {
+                // Set the current user based on the authenticated user
+                if let authUser = supabaseManager.authUser,
+                   let user = choreViewModel.users.first {
+                    choreViewModel.setCurrentUser(user)
+                }
             }
         }
     }
