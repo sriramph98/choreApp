@@ -734,7 +734,10 @@ class SupabaseManager: ObservableObject {
     /// Create a new household in Supabase
     @MainActor
     func createHousehold(_ household: Household) async -> Bool {
-        guard isAuthenticated, let userId = authUser?.id else { return false }
+        guard isAuthenticated, let userId = authUser?.id else { 
+            print("Error creating household: Not authenticated or missing user ID")
+            return false 
+        }
         
         do {
             // Create a dictionary with the right data types for Supabase
@@ -748,15 +751,42 @@ class SupabaseManager: ObservableObject {
             
             print("Creating household with data: \(householdData)")
             
+            // More detailed logging of the Supabase request
+            print("Sending request to 'households' table...")
+            
             let response = try await client
                 .from("households")
                 .insert(householdData)
                 .execute()
             
-            print("Household creation response: \(response)")
+            // Check the response status and data more explicitly
+            print("Household creation response status: \(response.status)")
+            if let responseData = String(data: response.data, encoding: .utf8) {
+                print("Response data: \(responseData)")
+            }
+            
+            // Check for specific error status codes
+            if response.status >= 400 {
+                print("Error creating household: HTTP status \(response.status)")
+                
+                // Check if the table might not exist
+                if response.status == 404 {
+                    print("The 'households' table might not exist in your Supabase database")
+                } else if response.status == 400 {
+                    print("Bad request - check if the household fields match the column names exactly")
+                } else if response.status == 401 || response.status == 403 {
+                    print("Authentication or permission error - check Supabase RLS policies")
+                }
+                
+                return false
+            }
+            
             return true
         } catch {
             print("Error creating household: \(error)")
+            // Get more detailed error information without the specific type
+            print("Error description: \(error.localizedDescription)")
+            print("Error domain: \((error as NSError).domain), code: \((error as NSError).code)")
             return false
         }
     }
@@ -904,6 +934,7 @@ class SupabaseManager: ObservableObject {
         }
         
         // Apply strict filtering to ensure only tasks from this household are returned
+        // Do NOT modify the householdId of tasks - leave them as they are in the database
         let householdTasks = allTasks.filter { task in
             task.householdId == householdId
         }

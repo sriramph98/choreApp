@@ -2,16 +2,42 @@ import Foundation
 
 @MainActor
 class ChoreViewModel: ObservableObject {
+    // MARK: - Properties
+    
+    /// Published state for all tasks
     @Published var tasks: [ChoreTask] = []
+    
+    /// Published state for users
     @Published var users: [User] = []
+    
+    /// Published state for custom chore templates
     @Published var customChores: [String] = []
+    
+    /// Currently signed-in user
     @Published var currentUser: User?
-    @Published var isOfflineMode = false
-    @Published var offlineUserData: (name: String, id: UUID)? = nil
+    
+    /// Current households
     @Published var households: [Household] = []
+    
+    /// Currently selected household
     @Published var currentHousehold: Household?
+    
+    /// Offline mode flag
+    @Published var isOfflineMode: Bool = UserDefaults.standard.bool(forKey: "isInOfflineMode")
+    
+    /// Offline user data for when operating without Supabase connection
+    @Published var offlineUserData: (name: String, id: UUID)? = nil
+    
+    /// Last sync time
+    var lastSyncTime = Date().addingTimeInterval(-86400) // Start by fetching last day's changes
+    
+    /// Check if the user is authenticated
+    var isAuthenticated: Bool {
+        return supabaseManager.isAuthenticated
+    }
+    
+    // Private properties
     private let supabaseManager = SupabaseManager.shared
-    private var lastSyncTime: Date = Date().addingTimeInterval(-3600) // Start with 1 hour ago
     
     enum RepeatOption: String, Codable {
         case never
@@ -214,7 +240,7 @@ class ChoreViewModel: ObservableObject {
             householdId: taskHouseholdId
         )
         
-        print("Created task \(task.id) with household ID: \(task.householdId?.uuidString ?? "nil")")
+        print("Created task \(task.id) with household ID: \(task.householdId?.uuidString ?? "nil") (Task: \(name))")
         
         // Add the task to our array and save it
         tasks.append(task)
@@ -350,8 +376,10 @@ class ChoreViewModel: ObservableObject {
             }
             
             // Ensure household ID is set (if missing and we have a current household)
+            // IMPORTANT: Only set householdId if it's currently nil, don't change existing assignments
             if task.householdId == nil {
                 task.householdId = currentHousehold?.id
+                print("Task \(task.id) (\(task.name)) was missing household ID, assigned to current household: \(currentHousehold?.id.uuidString ?? "nil")")
             }
             
             // Update the task in our array
@@ -375,29 +403,31 @@ class ChoreViewModel: ObservableObject {
             // If the task has a parent and repeat settings changed, update future occurrences
             if let parentTaskId = task.parentTaskId, let originalTask = tasks.first(where: { $0.id == parentTaskId }) {
                 if repeatOption != nil {
-                    updateAllFutureOccurrences(originalTask: originalTask, startingFrom: task)
+                    // Use Task to call the async method
+                    Task {
+                        await updateAllFutureOccurrences(originalTask: originalTask, startingFrom: task)
+                    }
                 }
             }
         }
     }
     
-    private func updateAllFutureOccurrences(originalTask: ChoreTask, startingFrom task: ChoreTask) {
+    private func updateAllFutureOccurrences(originalTask: ChoreTask, startingFrom task: ChoreTask) async {
         let now = Date()
         
-        Task { @MainActor in
-            for i in 0..<self.tasks.count {
-                if self.tasks[i].parentTaskId == originalTask.id && self.tasks[i].dueDate > now {
-                    // Copy updated fields to future occurrences
-                    self.tasks[i].name = task.name
-                    self.tasks[i].assignedTo = task.assignedTo
-                    self.tasks[i].notes = task.notes
-                    self.tasks[i].repeatOption = task.repeatOption
-                    
-                    // Also save to Supabase
-                    if supabaseManager.isAuthenticated && !isOfflineMode {
-                        // Add await to fix the unused result warning
-                        _ = await supabaseManager.updateTask(self.tasks[i])
-                    }
+        // No need to use Task since this method is now async
+        for i in 0..<self.tasks.count {
+            if self.tasks[i].parentTaskId == originalTask.id && self.tasks[i].dueDate > now {
+                // Copy updated fields to future occurrences
+                self.tasks[i].name = task.name
+                self.tasks[i].assignedTo = task.assignedTo
+                self.tasks[i].notes = task.notes
+                self.tasks[i].repeatOption = task.repeatOption
+                
+                // Also save to Supabase
+                if supabaseManager.isAuthenticated && !isOfflineMode {
+                    // Add await to fix the unused result warning
+                    _ = await supabaseManager.updateTask(self.tasks[i])
                 }
             }
         }
@@ -607,8 +637,17 @@ class ChoreViewModel: ObservableObject {
                 // Clear existing tasks
                 self.tasks.removeAll()
                 
-                // Replace with fetched tasks
-                self.tasks = fetchedTasks
+                // If we have a current household, only show tasks for this household
+                if let currentHouseholdId = self.currentHousehold?.id {
+                    // Filter tasks by the current household ID
+                    self.tasks = fetchedTasks.filter { task in
+                        task.householdId == currentHouseholdId
+                    }
+                    print("Filtered to \(self.tasks.count) tasks for household \(currentHouseholdId)")
+                } else {
+                    // If no household selected, show all tasks
+                    self.tasks = fetchedTasks
+                }
                 
                 // Ensure at least 7 days of repeating tasks exist
                 ensureRepeatingTasksExist()
@@ -756,39 +795,52 @@ class ChoreViewModel: ObservableObject {
     }
     
     // Supabase sync functions
+    @MainActor
     func syncTasksFromSupabase() async {
         if let supaTasks = await supabaseManager.fetchTasks() {
-            // Use MainActor.run instead of DispatchQueue.main.async for actor isolation
-            await MainActor.run {
-                // Only replace tasks from the database, keeping any local ones
-                // that haven't been synced yet
-                let existingIds = Set(supaTasks.map { $0.id })
-                let localOnlyTasks = self.tasks.filter { !existingIds.contains($0.id) }
-                
-                // Merge the lists
-                self.tasks = supaTasks + localOnlyTasks
-            }
+            // Only replace tasks from the database, keeping any local ones
+            // that haven't been synced yet
+            let existingIds = Set(supaTasks.map { $0.id })
+            let localOnlyTasks = self.tasks.filter { !existingIds.contains($0.id) }
+            
+            // Merge the lists
+            self.tasks = supaTasks + localOnlyTasks
         }
     }
     
     private func saveTaskToSupabase(_ task: ChoreTask) async {
-        // Create a temporary copy of the task without the householdId
-        // since the column doesn't exist in the database yet
-        var taskToSave = task
-        
-        // Store the householdId in memory, but don't send it to Supabase yet
-        if taskToSave.householdId == nil, let currentHousehold = currentHousehold {
-            taskToSave.householdId = currentHousehold.id
-            print("Task \(task.id) assigned to household \(currentHousehold.id) in memory only")
-        } else if taskToSave.householdId != nil {
-            print("Task \(task.id) has household \(taskToSave.householdId!) in memory only")
+        if isOfflineMode {
+            print("In offline mode - skipping Supabase save and storing locally")
+            if let index = tasks.firstIndex(where: { $0.id == task.id }) {
+                await MainActor.run {
+                    tasks[index] = task
+                    saveOfflineData()
+                }
+            } else {
+                await MainActor.run {
+                    tasks.append(task)
+                    saveOfflineData()
+                }
+            }
+        } else {
+            // Use the original Supabase saving logic
+            _ = await supabaseManager.saveTask(task)
         }
-        
-        _ = await supabaseManager.saveTask(taskToSave)
     }
     
     private func deleteTaskFromSupabase(_ taskId: UUID) async {
-        _ = await supabaseManager.deleteTask(id: taskId)
+        if isOfflineMode {
+            print("In offline mode - removing task locally")
+            if let index = tasks.firstIndex(where: { $0.id == taskId }) {
+                await MainActor.run {
+                    tasks.remove(at: index)
+                    saveOfflineData()
+                }
+            }
+        } else {
+            // Use the original Supabase deletion logic
+            _ = await supabaseManager.deleteTask(id: taskId)
+        }
     }
     
     // User management with Supabase
@@ -850,48 +902,83 @@ class ChoreViewModel: ObservableObject {
     
     // Save offline tasks and users to UserDefaults
     func saveOfflineData() {
-        let defaults = UserDefaults.standard
+        print("Saving offline data")
         
-        // Save tasks
-        if let tasksData = try? JSONEncoder().encode(tasks) {
-            defaults.set(tasksData, forKey: "offlineTasks")
+        // Save users to UserDefaults
+        do {
+            let encodedUsers = try JSONEncoder().encode(self.users)
+            UserDefaults.standard.set(encodedUsers, forKey: "offlineUsers")
+            print("Saved \(self.users.count) users to offline storage")
+        } catch {
+            print("Error encoding users for offline storage: \(error)")
         }
         
-        // Save users
-        if let usersData = try? JSONEncoder().encode(users) {
-            defaults.set(usersData, forKey: "offlineUsers")
+        // Save tasks to UserDefaults
+        do {
+            let encodedTasks = try JSONEncoder().encode(self.tasks)
+            UserDefaults.standard.set(encodedTasks, forKey: "offlineTasks")
+            print("Saved \(self.tasks.count) tasks to offline storage")
+        } catch {
+            print("Error encoding tasks for offline storage: \(error)")
         }
-        
-        // Save custom chores
-        defaults.set(customChores, forKey: "offlineCustomChores")
     }
     
     // Load offline data from UserDefaults
     func loadOfflineData() {
-        let defaults = UserDefaults.standard
+        print("Loading offline data")
         
-        // Load tasks
-        if let tasksData = defaults.data(forKey: "offlineTasks"),
-           let loadedTasks = try? JSONDecoder().decode([ChoreTask].self, from: tasksData) {
-            tasks = loadedTasks
-        }
+        // Clear any existing data
+        self.tasks = []
+        self.users = []
+        self.customChores = []
+        self.currentUser = nil
+        self.households = []
+        self.currentHousehold = nil
         
-        // Load users
-        if let usersData = defaults.data(forKey: "offlineUsers"),
-           let loadedUsers = try? JSONDecoder().decode([User].self, from: usersData) {
-            users = loadedUsers
-            
-            // Restore current user
-            if let offlineData = loadOfflineUser(),
-               let user = users.first(where: { $0.id == offlineData.id }) {
-                currentUser = user
+        // Load users from UserDefaults
+        if let userData = UserDefaults.standard.data(forKey: "offlineUsers") {
+            do {
+                let decodedUsers = try JSONDecoder().decode([User].self, from: userData)
+                self.users = decodedUsers
+                print("Loaded \(decodedUsers.count) offline users")
+                
+                // Set current user if available
+                if let firstUser = decodedUsers.first {
+                    self.currentUser = firstUser
+                    print("Set current user to: \(firstUser.name)")
+                }
+            } catch {
+                print("Error decoding offline users: \(error)")
             }
         }
         
-        // Load custom chores
-        if let loadedChores = defaults.stringArray(forKey: "offlineCustomChores") {
-            customChores = loadedChores
+        // Load tasks from UserDefaults
+        if let taskData = UserDefaults.standard.data(forKey: "offlineTasks") {
+            do {
+                let decodedTasks = try JSONDecoder().decode([ChoreTask].self, from: taskData)
+                self.tasks = decodedTasks
+                print("Loaded \(decodedTasks.count) offline tasks")
+            } catch {
+                print("Error decoding offline tasks: \(error)")
+            }
         }
+        
+        // Create a default household for offline mode if none exists
+        if self.households.isEmpty {
+            let defaultHousehold = Household(
+                id: UUID(),
+                name: "Default Household",
+                creatorId: self.currentUser?.id ?? UUID(),
+                members: [self.currentUser?.id ?? UUID()].compactMap { $0 },
+                createdAt: Date()
+            )
+            self.households = [defaultHousehold]
+            self.currentHousehold = defaultHousehold
+            print("Created default offline household")
+        }
+        
+        // Ensure repeating tasks exist
+        ensureRepeatingTasksExist()
     }
     
     // MARK: - Household Management
@@ -915,7 +1002,15 @@ class ChoreViewModel: ObservableObject {
     /// Create a new household
     func createHousehold(name: String) async -> Bool {
         // Ensure we have the current user and they're authenticated
-        guard let currentUser = currentUser, supabaseManager.isAuthenticated else { return false }
+        guard let currentUser = currentUser else { 
+            print("Cannot create household: No current user")
+            return false 
+        }
+        
+        if !supabaseManager.isAuthenticated {
+            print("Cannot create household: User not authenticated with Supabase")
+            return false
+        }
         
         print("Creating household '\(name)' for user \(currentUser.id)")
         
@@ -925,15 +1020,60 @@ class ChoreViewModel: ObservableObject {
             members: [currentUser.id]
         )
         
+        // First check if the households table exists in Supabase
+        do {
+            // Try to check if the households table exists by making a simple query
+            let client = supabaseManager.client
+            let testResponse = try await client
+                .from("households")
+                .select("id")
+                .limit(1)
+                .execute()
+            
+            print("Households table check response status: \(testResponse.status)")
+            
+            // If response is 404, the table likely doesn't exist
+            if testResponse.status == 404 {
+                print("ERROR: The 'households' table doesn't exist in your Supabase database.")
+                print("Please run the create_households_table.sql migration script in the Migrations folder.")
+                return false
+            }
+        } catch {
+            print("Error checking households table: \(error)")
+            // Continue anyway, as the create call will also fail if the table doesn't exist
+        }
+        
+        // Now attempt to create the household
         let success = await supabaseManager.createHousehold(newHousehold)
         
         if success {
+            print("Successfully created household in Supabase")
+            
+            // Add a small delay before fetching to allow Supabase to process the insertion
+            try? await Task.sleep(nanoseconds: 1_000_000_000) // 1 second delay
+            
             // If created successfully, fetch all households to get the server-created one
             await fetchHouseholds()
+            
+            // Verify the household was actually created
+            let hasHousehold = await MainActor.run {
+                return households.contains { household in
+                    household.name == name && household.creatorId == currentUser.id
+                }
+            }
+            
+            if hasHousehold {
+                print("Successfully verified household creation")
+                return true
+            } else {
+                print("WARNING: Household was reportedly created but isn't showing up in the fetched households list")
+            }
+            
             return true
+        } else {
+            print("Failed to create household in Supabase")
+            return false
         }
-        
-        return false
     }
     
     /// Switch to a specific household
@@ -964,7 +1104,7 @@ class ChoreViewModel: ObservableObject {
         
         // Fetch tasks ONLY for this household
         if let fetchedTasks = await supabaseManager.fetchTasksForHousehold(householdId: household.id) {
-            // Filter tasks to ensure they belong to this household
+            // Filter tasks to ensure they belong to this household - DO NOT modify household IDs
             let filteredTasks = fetchedTasks.filter { task in
                 task.householdId == household.id
             }
@@ -1083,10 +1223,13 @@ class ChoreViewModel: ObservableObject {
         var tasksUpdated = false
         
         // Look for tasks without a householdId and assign the current one
+        // ONLY assign household ID to tasks that don't have one
         for i in 0..<tasks.count {
             if tasks[i].householdId == nil {
                 tasks[i].householdId = currentHousehold.id
                 tasksUpdated = true
+                
+                print("Assigned household ID \(currentHousehold.id) to previously unassigned task: \(tasks[i].name)")
                 
                 // If connected to Supabase, save the updated task
                 if supabaseManager.isAuthenticated {
@@ -1115,5 +1258,20 @@ class ChoreViewModel: ObservableObject {
         if let householdId = currentHousehold?.id {
             defaults.set(householdId.uuidString, forKey: "currentHouseholdId")
         }
+    }
+    
+    // Add a user in offline mode
+    func addOfflineUser(name: String) {
+        let newUser = User(
+            id: UUID(),
+            name: name,
+            avatarSystemName: "person.circle.fill",
+            color: "gray"
+        )
+        
+        self.users.append(newUser)
+        self.currentUser = newUser
+        self.saveOfflineData()
+        print("Added offline user: \(name)")
     }
 } 

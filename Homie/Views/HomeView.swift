@@ -103,8 +103,10 @@ struct HomeView: View {
                 // Fetch fresh data
                 await choreViewModel.loadTasksForCurrentUser()
                 
-                // Ensure all tasks have the correct household ID
+                // Only assign household IDs to NEW tasks that don't have one
+                // This prevents reassigning tasks to a different household
                 await MainActor.run {
+                    // This now only assigns to tasks without a household ID
                     choreViewModel.ensureTasksHaveHouseholdIds()
                 }
                 

@@ -234,7 +234,15 @@ struct CreateHouseholdView: View {
         isCreating = true
         
         Task {
+            // Show a spinner for at least 1 second to provide feedback
+            let startTime = Date()
             let success = await choreViewModel.createHousehold(name: householdName)
+            
+            // Make sure the spinner shows for at least 1 second
+            let elapsedTime = Date().timeIntervalSince(startTime)
+            if elapsedTime < 1.0 {
+                try? await Task.sleep(nanoseconds: UInt64((1.0 - elapsedTime) * 1_000_000_000))
+            }
             
             await MainActor.run {
                 isCreating = false
@@ -242,7 +250,14 @@ struct CreateHouseholdView: View {
                 if success {
                     isPresented = false
                 } else {
-                    errorMessage = "Failed to create household. Please try again."
+                    // Show a more helpful error message
+                    if !choreViewModel.isAuthenticated {
+                        errorMessage = "You must be logged in to create a household."
+                    } else if choreViewModel.currentUser == nil {
+                        errorMessage = "No user profile found. Please log out and log in again."
+                    } else {
+                        errorMessage = "Failed to create household. This may be due to a database issue. Please try again later or contact support."
+                    }
                 }
             }
         }

@@ -16,6 +16,11 @@ struct LoginView: View {
     @State private var showingSuccessAlert = false
     @State private var showingOfflineNamePrompt = false
     @State private var offlineName = ""
+    @State private var isInSignUpMode = false
+    @State private var confirmPassword = ""
+    @State private var name = ""
+    @State private var showEmailSignUp = false
+    @State private var showCreateHouseholdScreen = false
     
     var body: some View {
         ZStack {
@@ -159,9 +164,14 @@ struct LoginView: View {
                 onComplete: continueWithOfflineMode
             )
         }
+        .sheet(isPresented: $showCreateHouseholdScreen) {
+            CreateHouseholdView(isPresented: $showCreateHouseholdScreen)
+                .environmentObject(choreViewModel)
+        }
         .onAppear {
             // Always check app state when view appears
             restoreAppState()
+            handleAuthStateChange()
         }
         .onReceive(NotificationCenter.default.publisher(for: UIApplication.willEnterForegroundNotification)) { _ in
             // Also check app state when app returns from background
@@ -290,7 +300,22 @@ struct LoginView: View {
     
     // Function to restore app state when the app starts
     private func restoreAppState() {
-        // First check for an existing Supabase session (highest priority)
+        // Check if we're in offline mode first
+        if isInOfflineMode {
+            print("Restoring offline mode session")
+            
+            // Set the offline mode flag in the view model
+            choreViewModel.isOfflineMode = true
+            
+            // Load the offline user data and tasks
+            choreViewModel.loadOfflineData()
+            
+            // Complete login to bypass this screen
+            hasCompletedLogin = true
+            return
+        }
+        
+        // Only check Supabase session if not in offline mode
         Task {
             await supabaseManager.checkAndSetSession()
             
@@ -299,20 +324,73 @@ struct LoginView: View {
             
             // If no active Supabase session, check if we were in offline mode
             if !supabaseManager.isAuthenticated {
-                if isInOfflineMode {
-                    print("Restoring offline mode session")
-                    
-                    // Set the offline mode flag in the view model
-                    choreViewModel.isOfflineMode = true
-                    
-                    // Load the offline user data and tasks
-                    choreViewModel.loadOfflineData()
-                    
-                    // Complete login to bypass this screen
+                // Neither authenticated nor offline mode - show login screen
+                print("No active session found, showing login screen")
+                hasCompletedLogin = false
+            }
+        }
+    }
+    
+    // Handle authentication state changes
+    private func handleAuthStateChange() {
+        // Skip auth state monitoring if in offline mode
+        if isInOfflineMode {
+            print("Skipping auth state monitoring - in offline mode")
+            return
+        }
+        
+        // Listen for authentication changes
+        Task {
+            let client = SupabaseManager.shared.client
+            for await _ in client.auth.authStateChanges {
+                if SupabaseManager.shared.isAuthenticated, let authUser = SupabaseManager.shared.authUser {
+                    print("User authenticated: \(authUser.id)")
                     hasCompletedLogin = true
+                    
+                    // Clear existing data before loading new profile
+                    await MainActor.run {
+                        choreViewModel.tasks.removeAll()
+                        choreViewModel.users.removeAll()
+                        choreViewModel.customChores.removeAll()
+                        choreViewModel.currentUser = nil
+                        choreViewModel.households = []
+                        choreViewModel.currentHousehold = nil
+                    }
+                    
+                    // Load the profile for this user
+                    await choreViewModel.switchToProfile(userId: authUser.id)
+                    
+                    // Check if the user has any households
+                    await choreViewModel.fetchHouseholds()
+                    
+                    await MainActor.run {
+                        let hasHouseholds = !choreViewModel.households.isEmpty
+                        print("User has households: \(hasHouseholds)")
+                        
+                        // Update UserDefaults with household selection status
+                        UserDefaults.standard.set(hasHouseholds, forKey: "hasSelectedHousehold")
+                        
+                        if !hasHouseholds {
+                            // User has no households, show create household screen with a delay
+                            // (to ensure profile loading has completed)
+                            Task {
+                                // Short delay to ensure user profile is loaded
+                                try? await Task.sleep(nanoseconds: 500_000_000) // 0.5 seconds
+                                
+                                await MainActor.run {
+                                    // Double-check that we still don't have any households
+                                    if choreViewModel.households.isEmpty {
+                                        print("Showing create household screen for new user")
+                                        showCreateHouseholdScreen = true
+                                    } else {
+                                        print("Households were found after waiting, no need to show creation screen")
+                                    }
+                                }
+                            }
+                        }
+                    }
                 } else {
-                    // Neither authenticated nor offline mode - show login screen
-                    print("No active session found, showing login screen")
+                    print("No authenticated user")
                     hasCompletedLogin = false
                 }
             }
@@ -438,7 +516,7 @@ struct SignUpView: View {
                 // Sign up button
                     Button {
                         Task {
-                        await signUp()
+                            await signUp()
                         }
                     } label: {
                         Group {
